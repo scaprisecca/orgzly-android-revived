@@ -77,6 +77,7 @@ class RichText(context: Context, attrs: AttributeSet?) :
 
     private val richTextEdit: RichTextEdit
     private val richTextView: RichTextView
+    private var keepEditModeOnNextFocusLossFlag = false
 
     init {
         parseAttrs(attrs)
@@ -110,7 +111,11 @@ class RichText(context: Context, attrs: AttributeSet?) :
             // If RichTextEdit loses the focus, switch to view mode
             setOnFocusChangeListener { _, hasFocus ->
                 if (!hasFocus) {
-                    toViewMode(true)
+                    if (keepEditModeOnNextFocusLossFlag) {
+                        keepEditModeOnNextFocusLossFlag = false
+                    } else {
+                        toViewMode(true)
+                    }
                 }
             }
         }
@@ -230,10 +235,25 @@ class RichText(context: Context, attrs: AttributeSet?) :
         }
     }
 
-    fun insertStringAtCursorPosition(string: String) {
-        val view = this.richTextEdit
-        if (view.isVisible) {
-            view.text?.replace(view.selectionStart, view.selectionEnd, string)
+    fun currentSelectionStart(): Int {
+        return richTextEdit.currentSelectionStart()
+    }
+
+    fun currentSelectionEnd(): Int {
+        return richTextEdit.currentSelectionEnd()
+    }
+
+    fun editViewId(): Int {
+        return richTextEdit.id
+    }
+
+    fun preserveEditModeOnNextFocusLoss() {
+        keepEditModeOnNextFocusLossFlag = true
+    }
+
+    fun applyEdit(text: String, selectionStart: Int, selectionEnd: Int) {
+        if (richTextEdit.isVisible) {
+            richTextEdit.applyEdit(text, selectionStart, selectionEnd)
         }
     }
 

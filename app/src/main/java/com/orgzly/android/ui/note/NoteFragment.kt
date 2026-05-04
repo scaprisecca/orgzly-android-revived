@@ -14,6 +14,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
@@ -60,7 +61,6 @@ import com.orgzly.android.ui.util.goneUnless
 import com.orgzly.android.ui.util.invisibleIf
 import com.orgzly.android.ui.util.invisibleUnless
 import com.orgzly.android.ui.views.richtext.RichText
-import com.orgzly.android.ui.views.richtext.RichTextEdit
 import com.orgzly.android.util.LogUtils
 import com.orgzly.android.util.OrgFormatter
 import com.orgzly.android.util.SpaceTokenizer
@@ -90,6 +90,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     private lateinit var mUserTimeFormatter: UserTimeFormatter
 
     private var dialog: AlertDialog? = null
+    private var pendingTimestampInsertionMode: TimestampInsertionMode? = null
 
     private lateinit var sharedMainActivityViewModel: SharedMainActivityViewModel
 
@@ -258,14 +259,185 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         setContentFoldState(AppPreferences.isNoteContentFolded(context))
         binding.content.setOnModeChangeListener(this)
         binding.title.setOnModeChangeListener(this)
+        setupEditorToolbar()
+        updateEditorToolbar()
     }
 
-    // Show/hide "insert timestamp" button
     override fun onEditMode() {
-        binding.topToolbar.menu.findItem(R.id.insert_inline_timestamp).isVisible = true
+        binding.topToolbar.menu.findItem(R.id.insert_inline_timestamp)?.isVisible = false
+        updateEditorToolbar()
     }
     override fun onViewMode() {
-        binding.topToolbar.menu.findItem(R.id.insert_inline_timestamp).isVisible = false
+        binding.topToolbar.menu.findItem(R.id.insert_inline_timestamp)?.isVisible = false
+        updateEditorToolbar()
+    }
+
+    private fun setupEditorToolbar() {
+        val transientFocusViews = arrayOf(
+            binding.editorToolbarBold,
+            binding.editorToolbarItalic,
+            binding.editorToolbarLink,
+            binding.editorToolbarBullet,
+            binding.editorToolbarCheckbox,
+            binding.editorToolbarTimestamp,
+            binding.editorToolbarMore,
+        )
+
+        transientFocusViews.forEach { view ->
+            view.setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                    currentEditor()?.preserveEditModeOnNextFocusLoss()
+                }
+                false
+            }
+        }
+
+        binding.editorToolbarBold.setOnClickListener { applyEditorAction(ToolbarAction.BOLD) }
+        binding.editorToolbarItalic.setOnClickListener { applyEditorAction(ToolbarAction.ITALIC) }
+        binding.editorToolbarLink.setOnClickListener { applyEditorAction(ToolbarAction.LINK) }
+        binding.editorToolbarBullet.setOnClickListener { applyEditorAction(ToolbarAction.BULLET) }
+        binding.editorToolbarCheckbox.setOnClickListener { applyEditorAction(ToolbarAction.CHECKBOX) }
+        binding.editorToolbarTimestamp.setOnClickListener { showTimestampActions() }
+        binding.editorToolbarMore.setOnClickListener { showInsertActions() }
+    }
+
+    private fun updateEditorToolbar() {
+        val hasEditor = currentEditor() != null && binding.viewFlipper.displayedChild == 0
+        val contentEditorActive = binding.content.isBeingEdited()
+
+        binding.editorToolbarContainer.goneUnless(hasEditor)
+        binding.editorToolbarBold.isEnabled = hasEditor
+        binding.editorToolbarItalic.isEnabled = hasEditor
+        binding.editorToolbarLink.isEnabled = hasEditor
+        binding.editorToolbarTimestamp.isEnabled = hasEditor
+        binding.editorToolbarMore.isEnabled = hasEditor
+        binding.editorToolbarBullet.isEnabled = contentEditorActive
+        binding.editorToolbarCheckbox.isEnabled = contentEditorActive
+
+        val bottomPadding = if (hasEditor) {
+            resources.getDimensionPixelSize(R.dimen.fragment_note_editor_toolbar_height)
+        } else {
+            0
+        }
+        binding.scrollView.setPadding(
+            binding.scrollView.paddingLeft,
+            binding.scrollView.paddingTop,
+            binding.scrollView.paddingRight,
+            bottomPadding,
+        )
+        binding.scrollView.clipToPadding = false
+    }
+
+    private fun currentEditor(): RichText? {
+        return when {
+            binding.content.isBeingEdited() -> binding.content
+            binding.title.isBeingEdited() -> binding.title
+            else -> null
+        }
+    }
+
+    private fun isContentEditorActive(): Boolean {
+        return binding.content.isBeingEdited()
+    }
+
+    private fun applyEditorAction(action: ToolbarAction): Boolean {
+        val editor = currentEditor() ?: return false
+        if (action.contentOnly && !isContentEditorActive()) {
+            return false
+        }
+
+        val selection = EditorSelection(editor.currentSelectionStart(), editor.currentSelectionEnd())
+        val text = editor.getSourceText()?.toString().orEmpty()
+        val result = when (action) {
+            ToolbarAction.BOLD -> EditorToolbarActions.bold(text, selection)
+            ToolbarAction.ITALIC -> EditorToolbarActions.italic(text, selection)
+            ToolbarAction.LINK -> EditorToolbarActions.link(text, selection)
+            ToolbarAction.BULLET -> EditorToolbarActions.bulletList(text, selection)
+            ToolbarAction.CHECKBOX -> EditorToolbarActions.checkboxList(text, selection)
+            ToolbarAction.CODE -> EditorToolbarActions.code(text, selection)
+            ToolbarAction.HEADING -> EditorToolbarActions.heading(text, selection)
+            ToolbarAction.TODO_STATE_ITEM -> EditorToolbarActions.todoStateItem(text, selection)
+            ToolbarAction.NUMBERED_LIST -> EditorToolbarActions.numberedList(text, selection)
+            ToolbarAction.PROPERTY_DRAWER -> EditorToolbarActions.propertyDrawer(text, selection)
+            ToolbarAction.PROPERTY_LINE -> EditorToolbarActions.propertyLine(text, selection)
+        }
+
+        editor.applyEdit(result.text, result.selection.start, result.selection.end)
+        updateEditorToolbar()
+        return true
+    }
+
+    private fun showTimestampActions() {
+        if (binding.title.isBeingEdited()) {
+            launchTimestampDialog(TimestampInsertionMode.INLINE)
+            return
+        }
+
+        val actions = listOf(
+            DialogAction(R.string.editor_toolbar_inline_timestamp) { launchTimestampDialog(TimestampInsertionMode.INLINE) },
+            DialogAction(R.string.editor_toolbar_scheduled_timestamp) { launchTimestampDialog(TimestampInsertionMode.SCHEDULED) },
+            DialogAction(R.string.editor_toolbar_deadline_timestamp) { launchTimestampDialog(TimestampInsertionMode.DEADLINE) },
+            DialogAction(R.string.editor_toolbar_repeater_timestamp) { launchTimestampDialog(TimestampInsertionMode.REPEATER) },
+        )
+
+        currentEditor()?.preserveEditModeOnNextFocusLoss()
+        dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.editor_toolbar_timestamp_title)
+            .setItems(actions.map { getString(it.labelRes) }.toTypedArray()) { _, which ->
+                actions[which].action()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showInsertActions() {
+        val actions = if (binding.title.isBeingEdited()) {
+            listOf(
+                DialogAction(R.string.editor_toolbar_code) { applyEditorAction(ToolbarAction.CODE) },
+                DialogAction(R.string.editor_toolbar_inline_timestamp) { launchTimestampDialog(TimestampInsertionMode.INLINE) },
+            )
+        } else {
+            listOf(
+                DialogAction(R.string.editor_toolbar_heading) { applyEditorAction(ToolbarAction.HEADING) },
+                DialogAction(R.string.editor_toolbar_todo_state_item) { applyEditorAction(ToolbarAction.TODO_STATE_ITEM) },
+                DialogAction(R.string.editor_toolbar_numbered_list) { applyEditorAction(ToolbarAction.NUMBERED_LIST) },
+                DialogAction(R.string.editor_toolbar_code) { applyEditorAction(ToolbarAction.CODE) },
+                DialogAction(R.string.editor_toolbar_property_drawer) { applyEditorAction(ToolbarAction.PROPERTY_DRAWER) },
+                DialogAction(R.string.editor_toolbar_property_line) { applyEditorAction(ToolbarAction.PROPERTY_LINE) },
+                DialogAction(R.string.editor_toolbar_scheduled_timestamp) { launchTimestampDialog(TimestampInsertionMode.SCHEDULED) },
+                DialogAction(R.string.editor_toolbar_deadline_timestamp) { launchTimestampDialog(TimestampInsertionMode.DEADLINE) },
+                DialogAction(R.string.editor_toolbar_inline_timestamp) { launchTimestampDialog(TimestampInsertionMode.INLINE) },
+                DialogAction(R.string.editor_toolbar_repeater_timestamp) { launchTimestampDialog(TimestampInsertionMode.REPEATER) },
+            )
+        }
+
+        currentEditor()?.preserveEditModeOnNextFocusLoss()
+        dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.editor_toolbar_more_title)
+            .setItems(actions.map { getString(it.labelRes) }.toTypedArray()) { _, which ->
+                actions[which].action()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun launchTimestampDialog(mode: TimestampInsertionMode) {
+        val editor = currentEditor() ?: return
+        pendingTimestampInsertionMode = mode
+        editor.preserveEditModeOnNextFocusLoss()
+
+        val timeType = when (mode) {
+            TimestampInsertionMode.INLINE, TimestampInsertionMode.REPEATER -> TimeType.EVENT
+            TimestampInsertionMode.SCHEDULED -> TimeType.SCHEDULED
+            TimestampInsertionMode.DEADLINE -> TimeType.DEADLINE
+        }
+
+        TimestampDialogFragment.getInstance(
+            editor.editViewId(),
+            timeType,
+            emptySet(),
+            null,
+        ).show(childFragmentManager, TimestampDialogFragment.FRAGMENT_TAG)
     }
 
     private fun topToolbarToViewMode() {
@@ -393,18 +565,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             }
 
             R.id.insert_inline_timestamp -> {
-                // The current view can only be content_edit or title_edit
-                val originViewId = if (binding.content.isBeingEdited()) {
-                    R.id.content_edit
-                } else {
-                    R.id.title_edit
-                }
-                TimestampDialogFragment.getInstance(
-                    originViewId,
-                    TimeType.EVENT,
-                    emptySet(),
-                    null)
-                    .show(childFragmentManager, TimestampDialogFragment.FRAGMENT_TAG)
+                launchTimestampDialog(TimestampInsertionMode.INLINE)
             }
         }
 
@@ -680,7 +841,6 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
              */
             if (viewModel.isNew() && !viewModel.hasInitialTitleData()) {
                 binding.title.toEditMode(0)
-                binding.topToolbar.menu.findItem(R.id.insert_inline_timestamp).isVisible = true
             }
         }
 
@@ -929,25 +1089,41 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
                 updateTimestampView(TimeType.SCHEDULED, range)
                 ensureAlarmPermissions(time)
                 viewModel.updatePayloadScheduledTime(range)
+                pendingTimestampInsertionMode = null
             }
 
             R.id.deadline_button -> {
                 updateTimestampView(TimeType.DEADLINE, range)
                 ensureAlarmPermissions(time)
                 viewModel.updatePayloadDeadlineTime(range)
+                pendingTimestampInsertionMode = null
             }
 
             R.id.closed_button -> {
                 updateTimestampView(TimeType.CLOSED, range)
                 viewModel.updatePayloadClosedTime(range)
+                pendingTimestampInsertionMode = null
             }
 
             R.id.content_edit, R.id.title_edit -> {
                 if (time != null) {
-                    val originView = this.view?.findViewById<RichTextEdit>(originViewId)
-                    originView?.insertStringAtCursorPosition(time.toString())
+                    val editor = editorForOriginViewId(originViewId)
+                    editor?.let {
+                        val selection = EditorSelection(it.currentSelectionStart(), it.currentSelectionEnd())
+                        val text = it.getSourceText()?.toString().orEmpty()
+                        val result = when (pendingTimestampInsertionMode ?: TimestampInsertionMode.INLINE) {
+                            TimestampInsertionMode.INLINE, TimestampInsertionMode.REPEATER ->
+                                EditorToolbarActions.inlineTimestamp(text, selection, time.toString())
+                            TimestampInsertionMode.SCHEDULED ->
+                                EditorToolbarActions.scheduledTimestamp(text, selection, time.toString())
+                            TimestampInsertionMode.DEADLINE ->
+                                EditorToolbarActions.deadlineTimestamp(text, selection, time.toString())
+                        }
+                        it.applyEdit(result.text, result.selection.start, result.selection.end)
+                    }
                     ensureAlarmPermissions(time)
                 }
+                pendingTimestampInsertionMode = null
             }
         }
     }
@@ -964,6 +1140,15 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     }
 
     override fun onDateTimeAborted(originViewId: Int, noteIds: TreeSet<Long>) {
+        pendingTimestampInsertionMode = null
+    }
+
+    private fun editorForOriginViewId(originViewId: Int): RichText? {
+        return when (originViewId) {
+            R.id.title_edit -> binding.title
+            R.id.content_edit -> binding.content
+            else -> null
+        }
     }
 
     private fun setMetadataViewsVisibility() {
@@ -1177,6 +1362,32 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         fun onNoteCreated(note: Note)
         fun onNoteUpdated(note: Note)
         fun onNoteCanceled()
+    }
+
+    private data class DialogAction(
+        val labelRes: Int,
+        val action: () -> Unit,
+    )
+
+    private enum class ToolbarAction(val contentOnly: Boolean) {
+        BOLD(contentOnly = false),
+        ITALIC(contentOnly = false),
+        LINK(contentOnly = false),
+        BULLET(contentOnly = true),
+        CHECKBOX(contentOnly = true),
+        CODE(contentOnly = false),
+        HEADING(contentOnly = true),
+        TODO_STATE_ITEM(contentOnly = true),
+        NUMBERED_LIST(contentOnly = true),
+        PROPERTY_DRAWER(contentOnly = true),
+        PROPERTY_LINE(contentOnly = true),
+    }
+
+    private enum class TimestampInsertionMode {
+        INLINE,
+        SCHEDULED,
+        DEADLINE,
+        REPEATER,
     }
 
     companion object {

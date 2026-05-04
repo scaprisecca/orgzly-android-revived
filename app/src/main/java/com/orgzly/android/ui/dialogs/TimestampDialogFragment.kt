@@ -149,6 +149,10 @@ class TimestampDialogFragment : DialogFragment(), View.OnClickListener {
     }
 
     private fun timestampIsInline(): Boolean {
+        return viewModel.timeType == TimeType.EVENT && originatesFromEditor()
+    }
+
+    private fun originatesFromEditor(): Boolean {
         return originViewId == R.id.content_edit || originViewId == R.id.title_edit
     }
 
@@ -287,11 +291,11 @@ class TimestampDialogFragment : DialogFragment(), View.OnClickListener {
 
     override fun onDetach() {
         super.onDetach()
-        if (timestampIsInline()) {
+        if (originatesFromEditor()) {
             originViewId.let {
                 val view = requireParentFragment().view?.findViewById<RichTextEdit>(it)
                 if (view != null)
-                    KeyboardUtils.openSoftKeyboard(view)
+                    view.requestFocusAndOpenKeyboard()
             }
         }
     }

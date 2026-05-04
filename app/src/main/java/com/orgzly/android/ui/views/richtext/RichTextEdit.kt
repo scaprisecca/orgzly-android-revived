@@ -84,6 +84,29 @@ class RichTextEdit : AppCompatEditText {
         visibility = View.GONE
     }
 
+    fun currentSelectionStart(): Int {
+        return selectionStart.coerceAtLeast(0)
+    }
+
+    fun currentSelectionEnd(): Int {
+        return selectionEnd.coerceAtLeast(currentSelectionStart())
+    }
+
+    fun applyEdit(text: String, selectionStart: Int, selectionEnd: Int) {
+        setText(text)
+        val boundedStart = selectionStart.coerceIn(0, text.length)
+        val boundedEnd = selectionEnd.coerceIn(boundedStart, text.length)
+        setSelection(boundedStart, boundedEnd)
+        requestFocusAndOpenKeyboard()
+    }
+
+    fun requestFocusAndOpenKeyboard() {
+        requestFocus()
+        KeyboardUtils.openSoftKeyboard(this) {
+            scrollForBetterCursorPosition(currentSelectionStart())
+        }
+    }
+
     /* Clear the focus on back press before letting IME handle the event. */
     override fun onKeyPreIme(keyCode: Int, event: KeyEvent?): Boolean {
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, keyCode, event)
@@ -94,10 +117,6 @@ class RichTextEdit : AppCompatEditText {
         }
 
         return super.onKeyPreIme(keyCode, event)
-    }
-
-    fun insertStringAtCursorPosition(string: String) {
-        this.text?.replace(this.selectionStart, this.selectionEnd, string)
     }
 
     companion object {

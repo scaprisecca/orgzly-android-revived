@@ -337,6 +337,70 @@
         </ScrollView>
     </ViewFlipper>
 
+    <HorizontalScrollView
+        android:id="@+id/editor_toolbar_container"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/fragment_note_editor_toolbar_height"
+        android:layout_gravity="bottom"
+        android:background="?attr/colorSecondaryContainer"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <Button
+                android:id="@+id/editor_toolbar_bold"
+                style="@style/EditorToolbarTextButton"
+                android:contentDescription="@string/editor_toolbar_bold"
+                android:text="B"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/editor_toolbar_italic"
+                style="@style/EditorToolbarTextButton"
+                android:contentDescription="@string/editor_toolbar_italic"
+                android:text="I"
+                android:textStyle="italic" />
+
+            <ImageButton
+                android:id="@+id/editor_toolbar_link"
+                style="@style/EditorToolbarImageButton"
+                android:contentDescription="@string/editor_toolbar_link"
+                android:src="@drawable/ic_link" />
+
+            <ImageButton
+                android:id="@+id/editor_toolbar_bullet"
+                style="@style/EditorToolbarImageButton"
+                android:contentDescription="@string/editor_toolbar_bullet"
+                android:src="@drawable/ic_format_list_bulleted" />
+
+            <Button
+                android:id="@+id/editor_toolbar_checkbox"
+                style="@style/EditorToolbarTextButton"
+                android:contentDescription="@string/editor_toolbar_checkbox"
+                android:text="[ ]" />
+
+            <ImageButton
+                android:id="@+id/editor_toolbar_timestamp"
+                style="@style/EditorToolbarImageButton"
+                android:contentDescription="@string/editor_toolbar_timestamp"
+                android:src="@drawable/ic_today" />
+
+            <Button
+                android:id="@+id/editor_toolbar_more"
+                style="@style/EditorToolbarTextButton"
+                android:contentDescription="@string/editor_toolbar_more"
+                android:text="@string/editor_toolbar_more_short" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
     <!-- Top toolbar -->
     <!-- TODO: DRY -->
     <com.google.android.material.appbar.AppBarLayout
