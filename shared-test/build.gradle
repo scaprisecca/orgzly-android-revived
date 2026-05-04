@@ -23,6 +23,10 @@ android {
         debug {
             buildConfigField "String", "DROPBOX_REFRESH_TOKEN", gradle.ext.appProperties.getProperty("dropbox.refresh_token", '""') 
         }
+        dev {
+            initWith debug
+            matchingFallbacks = ['debug']
+        }
     }
     flavorDimensions "store"
     productFlavors {

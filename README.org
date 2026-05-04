@@ -60,6 +60,55 @@ If you don't use Android Studio and wish to [[https://developer.android.com/stud
 - ~./gradlew build~ builds the project and generates APK files
 - ~./gradlew connectedAndroidTest~ runs instrumented unit tests
 
+For local F-Droid builds on this repo, the preferred helpers are:
+
+#+begin_src shell
+./scripts/build_fdroid.sh
+./scripts/build_fdroid_dev.sh
+#+end_src
+
+Those helper scripts:
+- force Gradle to use JDK 17
+- export ~ANDROID_SDK_ROOT~ / ~ANDROID_HOME~
+- create ~local.properties~ if it is missing
+- default to a useful local build task
+
+Standard local build commands:
+
+#+begin_src shell
+./scripts/build_fdroid.sh
+./scripts/build_fdroid.sh installFdroidDebug
+./scripts/build_fdroid.sh assembleFdroidRelease
+./scripts/build_fdroid.sh bundleFdroidRelease
+#+end_src
+
+Side-by-side dev build commands:
+
+#+begin_src shell
+./scripts/build_fdroid_dev.sh
+./scripts/build_fdroid_dev.sh installFdroidDev
+#+end_src
+
+The dev build uses:
+- application ID: ~com.orgzlyrevived.dev~
+- app label: ~Orgzly Revived Dev~
+
+That lets it coexist with the installed store/F-Droid app for manual testing.
+
+Environment overrides:
+
+#+begin_src shell
+JAVA17_HOME=/path/to/jdk17 ANDROID_SDK_ROOT=/path/to/android-sdk ./scripts/build_fdroid.sh
+JAVA17_HOME=/path/to/jdk17 ANDROID_SDK_ROOT=/path/to/android-sdk ./scripts/build_fdroid_dev.sh
+#+end_src
+
+APK outputs:
+- standard debug APK: ~app/build/outputs/apk/fdroid/debug/app-fdroid-debug.apk~
+- dev APK: ~app/build/outputs/apk/fdroid/dev/app-fdroid-dev.apk~
+- release APK: ~app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk~
+
+Note: the release APK is unsigned unless you add your own signing config, so the standard debug or dev APK is the quickest option for manual testing on a phone.
+
 Make sure you [[https://developer.android.com/training/testing/espresso/setup][turn off animations]] for the device you're testing on.
 
 ** Nix

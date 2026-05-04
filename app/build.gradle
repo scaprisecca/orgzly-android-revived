@@ -67,6 +67,18 @@ android {
 
             buildConfigField "String", "GIT_COMMIT", "\"${getCheckedOutGitCommitHash()}\""
         }
+
+        dev {
+            initWith debug
+
+            applicationIdSuffix ".dev"
+            versionNameSuffix " (dev)"
+
+            resValue "string", "application_id", "com.orgzlyrevived.dev"
+            resValue "string", "app_name", "Orgzly Revived Dev"
+
+            matchingFallbacks = ['debug']
+        }
     }
 
     flavorDimensions "store"
