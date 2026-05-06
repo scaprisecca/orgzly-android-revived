@@ -304,6 +304,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     private fun updateEditorToolbar() {
         val hasEditor = currentEditor() != null && binding.viewFlipper.displayedChild == 0
         val contentEditorActive = binding.content.isBeingEdited()
+        val scrollView = binding.scrollView
 
         binding.editorToolbarContainer.goneUnless(hasEditor)
         binding.editorToolbarBold.isEnabled = hasEditor
@@ -314,18 +315,28 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         binding.editorToolbarBullet.isEnabled = contentEditorActive
         binding.editorToolbarCheckbox.isEnabled = contentEditorActive
 
+        val oldBottomPadding = scrollView.paddingBottom
+        val wasAtBottom = !scrollView.canScrollVertically(1)
         val bottomPadding = if (hasEditor) {
             resources.getDimensionPixelSize(R.dimen.fragment_note_editor_toolbar_height)
         } else {
             0
         }
-        binding.scrollView.setPadding(
-            binding.scrollView.paddingLeft,
-            binding.scrollView.paddingTop,
-            binding.scrollView.paddingRight,
+
+        scrollView.setPadding(
+            scrollView.paddingLeft,
+            scrollView.paddingTop,
+            scrollView.paddingRight,
             bottomPadding,
         )
-        binding.scrollView.clipToPadding = false
+        scrollView.clipToPadding = false
+
+        val paddingDelta = bottomPadding - oldBottomPadding
+        if (wasAtBottom && paddingDelta > 0) {
+            scrollView.post {
+                scrollView.scrollBy(0, paddingDelta)
+            }
+        }
     }
 
     private fun currentEditor(): RichText? {
