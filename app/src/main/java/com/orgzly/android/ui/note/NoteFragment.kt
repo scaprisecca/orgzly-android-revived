@@ -131,8 +131,9 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             // Initial values when sharing
             val title = args.getString(ARG_TITLE)
             val content = args.getString(ARG_CONTENT)
+            val payload = args.getParcelable(ARG_PAYLOAD) as? NotePayload
 
-            return NoteInitialData(bookId, noteId, place, title, content)
+            return NoteInitialData(bookId, noteId, place, title, content, payload)
         }
     }
 
@@ -1413,6 +1414,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         private const val ARG_PLACE = "place"
         private const val ARG_TITLE = "title"
         private const val ARG_CONTENT = "content"
+        private const val ARG_PAYLOAD = "payload"
 
         @JvmStatic
         @JvmOverloads
@@ -1435,6 +1437,21 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         }
 
         @JvmStatic
+        fun forNewNote(notePlace: NotePlace, initialPayload: NotePayload): NoteFragment? {
+            return if (notePlace.bookId > 0) {
+                getInstance(
+                    notePlace.bookId,
+                    notePlace.noteId,
+                    notePlace.place,
+                    initialPayload = initialPayload,
+                )
+            } else {
+                Log.e(TAG, "Invalid book id ${notePlace.bookId}")
+                null
+            }
+        }
+
+        @JvmStatic
         fun forExistingNote(bookId: Long, noteId: Long): NoteFragment? {
             return if (bookId > 0 && noteId > 0) {
                 getInstance(bookId, noteId)
@@ -1450,7 +1467,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             noteId: Long,
             place: Place? = null,
             initialTitle: String? = null,
-            initialContent: String? = null): NoteFragment {
+            initialContent: String? = null,
+            initialPayload: NotePayload? = null): NoteFragment {
 
             val fragment = NoteFragment()
 
@@ -1472,6 +1490,10 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
             if (initialContent != null) {
                 args.putString(ARG_CONTENT, initialContent)
+            }
+
+            if (initialPayload != null) {
+                args.putParcelable(ARG_PAYLOAD, initialPayload)
             }
 
             fragment.arguments = args

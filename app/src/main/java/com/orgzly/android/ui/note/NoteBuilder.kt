@@ -146,6 +146,22 @@ class NoteBuilder {
             }
         }
 
+        @JvmStatic
+        fun initialScheduledTimeForTemplate(context: Context): String {
+            return initialScheduledTime(context) ?: run {
+                val cal = Calendar.getInstance()
+
+                val timestamp = OrgDateTime.Builder()
+                    .setIsActive(true)
+                    .setYear(cal.get(Calendar.YEAR))
+                    .setMonth(cal.get(Calendar.MONTH))
+                    .setDay(cal.get(Calendar.DAY_OF_MONTH))
+                    .build()
+
+                OrgRange(timestamp).toString()
+            }
+        }
+
         private fun initialState(context: Context): String? {
             AppPreferences.newNoteState(context).let {
                 return if (NoteStates.isKeyword(it)) {

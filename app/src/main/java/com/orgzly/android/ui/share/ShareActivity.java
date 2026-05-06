@@ -18,6 +18,10 @@ import com.orgzly.BuildConfig;
 import com.orgzly.R;
 import com.orgzly.android.App;
 import com.orgzly.android.AppIntent;
+import com.orgzly.android.SharingShortcutsManager;
+import com.orgzly.android.capture.CaptureInput;
+import com.orgzly.android.capture.CaptureTemplate;
+import com.orgzly.android.capture.CaptureTemplates;
 import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.db.entity.Book;
 import com.orgzly.android.db.entity.Note;
@@ -30,9 +34,9 @@ import com.orgzly.android.sync.AutoSync;
 import com.orgzly.android.ui.AppSnackbarUtils;
 import com.orgzly.android.ui.CommonActivity;
 import com.orgzly.android.ui.NotePlace;
-import com.orgzly.android.SharingShortcutsManager;
 import com.orgzly.android.ui.sync.SyncFragment;
 import com.orgzly.android.ui.note.NoteFragment;
+import com.orgzly.android.ui.note.NotePayload;
 import com.orgzly.android.ui.util.ActivityUtils;
 import com.orgzly.android.usecase.UseCase;
 import com.orgzly.android.usecase.UseCaseResult;
@@ -153,35 +157,7 @@ public class ShareActivity extends CommonActivity
                 mError = "Failed reading the content of " + uri.toString() + ": " + e.toString();
             }
         }
-        // TODO: Was used for direct share shortcuts to pass the book name. Used someplace else?
-        if (intent.hasExtra(AppIntent.EXTRA_QUERY_STRING)) {
-            Query query = new DottedQueryParser().parse(intent.getStringExtra(AppIntent.EXTRA_QUERY_STRING));
-            String bookName = QueryUtils.extractFirstBookNameFromQuery(query.getCondition());
-
-            if (bookName != null) {
-                Book book = dataRepository.getBook(bookName);
-                if (book != null) {
-                    data.bookId = book.getId();
-                    if (BuildConfig.LOG_DEBUG)
-                        LogUtils.d(TAG, "Using book " + data.bookId
-                                + " from passed query " + query + " (" + bookName + ")");
-                }
-            }
-        }
-        if (intent.hasExtra(AppIntent.EXTRA_BOOK_ID)) {
-            data.bookId = intent.getLongExtra(AppIntent.EXTRA_BOOK_ID, 0L);
-            if (BuildConfig.LOG_DEBUG)
-                LogUtils.d(TAG, "Using book " + data.bookId
-                        + " from passed book ID");
-        }
-        // Coming from Direct Share shortcut
-        if (intent.hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
-            String shortcutId = intent.getStringExtra(ShortcutManagerCompat.EXTRA_SHORTCUT_ID);
-            data.bookId = SharingShortcutsManager.bookIdFromShortcutId(shortcutId);
-            if (BuildConfig.LOG_DEBUG)
-                LogUtils.d(TAG, "Using book " + data.bookId
-                        + " from passed shortcut ID");
-        }
+        applyRoutingExtras(intent, data);
         return data;
     }
 
@@ -215,6 +191,8 @@ public class ShareActivity extends CommonActivity
             }
         }
 
+        applyRoutingExtras(intent, data);
+
         /* Make sure that title is never empty. */
         if (data.title == null) data.title = "";
 
@@ -222,8 +200,6 @@ public class ShareActivity extends CommonActivity
     }
 
     private void setupFragments(Bundle savedInstanceState, Data data) {
-        NoteFragment noteFragment;
-
         if (savedInstanceState == null) { /* Create and add fragments. */
 
             mSyncFragment = SyncFragment.getInstance();
@@ -233,26 +209,7 @@ public class ShareActivity extends CommonActivity
                     .add(mSyncFragment, SyncFragment.FRAGMENT_TAG)
                     .commit();
 
-            try {
-                long bookId;
-                if (data.bookId == null) {
-                    bookId = dataRepository.getTargetBook(this).getBook().getId();
-                } else {
-                    bookId = data.bookId;
-                }
-
-                noteFragment = NoteFragment.forNewNote(
-                        new NotePlace(bookId), data.title, data.content);
-
-                getSupportFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.activity_share_main, noteFragment, NoteFragment.FRAGMENT_TAG)
-                        .commit();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                // bail out here
-                finish();
-            }
+            openEditorForShareData(data);
         } else { /* Get existing fragments. */
             mSyncFragment = (SyncFragment) getSupportFragmentManager().findFragmentByTag(SyncFragment.FRAGMENT_TAG);
         }
@@ -344,6 +301,7 @@ public class ShareActivity extends CommonActivity
         String title;
         String content;
         Long bookId = null;
+        CaptureTemplate template = null;
     }
 
     /**
@@ -396,6 +354,97 @@ public class ShareActivity extends CommonActivity
         if (data.title == null) {
             data.title = uri.toString();
             data.content = "Cannot find image using this URI.";
+        }
+    }
+
+    private void applyRoutingExtras(Intent intent, Data data) {
+        // TODO: Was used for direct share shortcuts to pass the book name. Used someplace else?
+        if (intent.hasExtra(AppIntent.EXTRA_QUERY_STRING)) {
+            Query query = new DottedQueryParser().parse(intent.getStringExtra(AppIntent.EXTRA_QUERY_STRING));
+            String bookName = QueryUtils.extractFirstBookNameFromQuery(query.getCondition());
+
+            if (bookName != null) {
+                Book book = dataRepository.getBook(bookName);
+                if (book != null) {
+                    data.bookId = book.getId();
+                    if (BuildConfig.LOG_DEBUG)
+                        LogUtils.d(TAG, "Using book " + data.bookId
+                                + " from passed query " + query + " (" + bookName + ")");
+                }
+            }
+        }
+        if (intent.hasExtra(AppIntent.EXTRA_BOOK_ID)) {
+            data.bookId = intent.getLongExtra(AppIntent.EXTRA_BOOK_ID, 0L);
+            if (BuildConfig.LOG_DEBUG)
+                LogUtils.d(TAG, "Using book " + data.bookId
+                        + " from passed book ID");
+        }
+        // Coming from Direct Share shortcut
+        if (intent.hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+            String shortcutId = intent.getStringExtra(ShortcutManagerCompat.EXTRA_SHORTCUT_ID);
+            data.bookId = SharingShortcutsManager.bookIdFromShortcutId(shortcutId);
+            if (BuildConfig.LOG_DEBUG)
+                LogUtils.d(TAG, "Using book " + data.bookId
+                        + " from passed shortcut ID");
+        }
+        data.template = CaptureTemplate.fromId(intent.getStringExtra(AppIntent.EXTRA_CAPTURE_TEMPLATE_ID));
+    }
+
+    private void openEditorForShareData(Data data) {
+        if (data.template != null) {
+            showNoteEditor(data, data.template);
+            return;
+        }
+
+        java.util.List<CaptureTemplate> shareTemplates = CaptureTemplates.shareEnabledTemplates(this);
+
+        if (shareTemplates.isEmpty()) {
+            showNoteEditor(data, null);
+        } else if (shareTemplates.size() == 1) {
+            showNoteEditor(data, shareTemplates.get(0));
+        } else {
+            String[] items = new String[shareTemplates.size() + 1];
+            items[0] = getString(R.string.capture_template_blank_note);
+
+            for (int i = 0; i < shareTemplates.size(); i++) {
+                items[i + 1] = getString(shareTemplates.get(i).getLabelRes());
+            }
+
+            dialog = new AlertDialog.Builder(this)
+                    .setTitle(R.string.capture_template_picker_title)
+                    .setItems(items, (dialogInterface, which) -> {
+                        CaptureTemplate template = which == 0 ? null : shareTemplates.get(which - 1);
+                        showNoteEditor(data, template);
+                    })
+                    .setNegativeButton(R.string.cancel, (dialogInterface, which) -> finish())
+                    .show();
+        }
+    }
+
+    private void showNoteEditor(Data data, CaptureTemplate template) {
+        try {
+            long bookId = CaptureTemplates.resolveTargetBook(
+                    dataRepository,
+                    this,
+                    template,
+                    data.bookId).getBook().getId();
+
+            NotePayload payload = CaptureTemplates.buildPayload(
+                    this,
+                    template,
+                    new CaptureInput(data.title, data.content));
+
+            NoteFragment noteFragment = NoteFragment.forNewNote(new NotePlace(bookId), payload);
+
+            if (noteFragment != null) {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.activity_share_main, noteFragment, NoteFragment.FRAGMENT_TAG)
+                        .commit();
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            finish();
         }
     }
 }

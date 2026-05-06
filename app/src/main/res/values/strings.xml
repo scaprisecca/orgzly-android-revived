@@ -778,6 +778,19 @@
     <string name="in_note_heading">In note heading</string>
     <string name="in_note_content">In note content</string>
     <string name="create_org_links_from_shared_links">Create org links from shared links</string>
+    <string name="capture_templates">Capture templates</string>
+    <string name="capture_template_picker_title">Choose a capture template</string>
+    <string name="capture_template_blank_note">Blank note</string>
+    <string name="capture_template_enabled">Enabled</string>
+    <string name="capture_template_share_enabled">Available in share</string>
+    <string name="capture_template_target_notebook">Target notebook</string>
+    <string name="capture_template_target_notebook_summary">Leave empty to fall back to the default notebook</string>
+    <string name="capture_template_inbox_task">Inbox task</string>
+    <string name="capture_template_repeating_chore">Repeating chore</string>
+    <string name="capture_template_meeting_note">Meeting note</string>
+    <string name="capture_template_learning_note">Learning note</string>
+    <string name="capture_template_business_idea">Business idea</string>
+    <string name="capture_template_meeting_title_pattern">Meeting %1$s</string>
     <string name="book_names_cannot_contain">Book names cannot contain \'../\'</string>
     <string name="is_active_label">Active</string>
 

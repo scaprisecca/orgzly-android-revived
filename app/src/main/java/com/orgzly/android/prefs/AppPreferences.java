@@ -279,6 +279,54 @@ public class AppPreferences {
                 context.getResources().getString(R.string.pref_default_share_notebook));
     }
 
+    private static String captureTemplateEnabledKey(String templateId) {
+        return "pref_key_capture_template_" + templateId + "_enabled";
+    }
+
+    private static String captureTemplateShareEnabledKey(String templateId) {
+        return "pref_key_capture_template_" + templateId + "_share_enabled";
+    }
+
+    private static String captureTemplateNotebookKey(String templateId) {
+        return "pref_key_capture_template_" + templateId + "_notebook";
+    }
+
+    public static boolean isCaptureTemplateEnabled(Context context, String templateId) {
+        return getDefaultSharedPreferences(context).getBoolean(
+                captureTemplateEnabledKey(templateId),
+                true);
+    }
+
+    public static void isCaptureTemplateEnabled(Context context, String templateId, boolean value) {
+        getDefaultSharedPreferences(context).edit()
+                .putBoolean(captureTemplateEnabledKey(templateId), value)
+                .apply();
+    }
+
+    public static boolean isCaptureTemplateShareEnabled(Context context, String templateId) {
+        return getDefaultSharedPreferences(context).getBoolean(
+                captureTemplateShareEnabledKey(templateId),
+                true);
+    }
+
+    public static void isCaptureTemplateShareEnabled(Context context, String templateId, boolean value) {
+        getDefaultSharedPreferences(context).edit()
+                .putBoolean(captureTemplateShareEnabledKey(templateId), value)
+                .apply();
+    }
+
+    public static String captureTemplateNotebook(Context context, String templateId) {
+        return getDefaultSharedPreferences(context).getString(
+                captureTemplateNotebookKey(templateId),
+                null);
+    }
+
+    public static void captureTemplateNotebook(Context context, String templateId, String value) {
+        getDefaultSharedPreferences(context).edit()
+                .putString(captureTemplateNotebookKey(templateId), value)
+                .apply();
+    }
+
     public static boolean forceUtf8(Context context) {
         return getDefaultSharedPreferences(context).getBoolean(
                 context.getResources().getString(R.string.pref_key_force_utf8),

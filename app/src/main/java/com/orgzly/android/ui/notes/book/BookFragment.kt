@@ -20,6 +20,9 @@ import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.BookUtils
 import com.orgzly.android.NotesOrgExporter
+import com.orgzly.android.capture.CaptureInput
+import com.orgzly.android.capture.CaptureTemplate
+import com.orgzly.android.capture.CaptureTemplates
 import com.orgzly.android.db.NotesClipboard
 import com.orgzly.android.db.entity.Book
 import com.orgzly.android.db.entity.NoteView
@@ -272,14 +275,7 @@ class BookFragment :
                     binding.fab.run {
                         if (currentBook != null) {
                             setOnClickListener {
-                                // If narrowed, add note under the narrowed root
-                                val narrowedId = viewModel.narrowedNoteId.value
-                                val notePlace = if (narrowedId != null) {
-                                    NotePlace(mBookId, narrowedId, Place.UNDER)
-                                } else {
-                                    NotePlace(mBookId)
-                                }
-                                listener?.onNoteNewRequest(notePlace)
+                                showCaptureTemplatePicker()
                             }
                             show()
                         } else {
@@ -339,6 +335,48 @@ class BookFragment :
         } else {
             viewModel.setFlipperDisplayedChild(BookViewModel.FlipperDisplayedChild.EMPTY)
         }
+    }
+
+    private fun showCaptureTemplatePicker() {
+        val templates = CaptureTemplates.enabledTemplates(requireContext())
+        val itemLabels = buildList {
+            add(getString(R.string.capture_template_blank_note))
+            addAll(templates.map { getString(it.labelRes) })
+        }
+
+        dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.capture_template_picker_title)
+            .setItems(itemLabels.toTypedArray()) { _, which ->
+                if (which == 0) {
+                    openBlankNote()
+                } else {
+                    openTemplatedNote(templates[which - 1])
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun openBlankNote() {
+        val narrowedId = viewModel.narrowedNoteId.value
+        val notePlace = if (narrowedId != null) {
+            NotePlace(mBookId, narrowedId, Place.UNDER)
+        } else {
+            NotePlace(mBookId)
+        }
+        listener?.onNoteNewRequest(notePlace)
+    }
+
+    private fun openTemplatedNote(template: CaptureTemplate) {
+        val targetBook = CaptureTemplates.resolveTargetBook(
+            dataRepository,
+            requireContext(),
+            template,
+            mBookId,
+        )
+        val payload = CaptureTemplates.buildPayload(requireContext(), template, CaptureInput())
+
+        listener?.onTemplatedNoteNewRequest(NotePlace(targetBook.book.id), payload)
     }
 
     override fun onResume() {
