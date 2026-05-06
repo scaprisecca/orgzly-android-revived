@@ -1,0 +1,15 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Added
+- Added a mobile note editor toolbar for faster Org editing on Android, including one-tap bold, italic, link, bullet, checkbox, timestamp, and More actions.
+- Added secondary insert actions for headings, TODO state items, numbered lists, code/verbatim text, property drawers, property lines, and scheduled, deadline, inline, and recurring timestamps.
+- Added a side-by-side `Orgzly Revived Dev` app variant and helper build scripts so local test builds can coexist with the installed store or F-Droid app.
+
+### Fixed
+- Fixed the note editor so when the formatting toolbar appears while you are already at the bottom of a note, the last lines stay visible instead of slipping under the toolbar.
