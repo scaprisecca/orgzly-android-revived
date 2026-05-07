@@ -916,6 +916,15 @@ public class AppPreferences {
         return value;
     }
 
+    public static String sharedImagesBaseDirectory(Context context) {
+        File dir = context.getExternalFilesDir(null);
+        if (dir != null) {
+            return dir.getAbsolutePath();
+        }
+
+        return context.getFilesDir().getAbsolutePath();
+    }
+
     /*
      * Note's metadata visibility
      */

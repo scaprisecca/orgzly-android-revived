@@ -368,20 +368,20 @@ public class ShareActivity extends CommonActivity
     }
 
     private ImportedImage copySharedImageToRelativeStorage(Uri uri, String displayName) throws IOException {
-        File rootDir = new File(AppPreferences.fileRelativeRoot(this));
-        if (!rootDir.isDirectory() && !rootDir.mkdirs()) {
-            throw new IOException("Failed creating relative file root directory " + rootDir);
+        File baseDir = new File(AppPreferences.sharedImagesBaseDirectory(this));
+        if (!baseDir.isDirectory() && !baseDir.mkdirs()) {
+            throw new IOException("Failed creating shared image base directory " + baseDir);
         }
 
-        File canonicalRootDir = rootDir.getCanonicalFile();
+        File canonicalBaseDir = baseDir.getCanonicalFile();
         String relativeDirectory = AppPreferences.sharedImagesRelativeDirectory(this);
-        File dir = new File(canonicalRootDir, relativeDirectory).getCanonicalFile();
-        String canonicalRootPath = canonicalRootDir.getPath();
+        File dir = new File(canonicalBaseDir, relativeDirectory).getCanonicalFile();
+        String canonicalBasePath = canonicalBaseDir.getPath();
         String targetDirPath = dir.getPath();
 
-        if (!targetDirPath.equals(canonicalRootPath)
-                && !targetDirPath.startsWith(canonicalRootPath + File.separator)) {
-            throw new IOException("Shared image folder must stay under the relative file root");
+        if (!targetDirPath.equals(canonicalBasePath)
+                && !targetDirPath.startsWith(canonicalBasePath + File.separator)) {
+            throw new IOException("Shared image folder must stay under Orgzly app storage");
         }
 
         if (!dir.isDirectory() && !dir.mkdirs()) {
@@ -413,10 +413,7 @@ public class ShareActivity extends CommonActivity
             }
         }
 
-        String relativePath = canonicalRootDir.toPath().relativize(target.getCanonicalFile().toPath()).toString()
-                .replace(File.separatorChar, '/');
-
-        return new ImportedImage(relativePath);
+        return new ImportedImage(target.getCanonicalPath());
     }
 
     private String getExtensionForSharedImage(Uri uri) {

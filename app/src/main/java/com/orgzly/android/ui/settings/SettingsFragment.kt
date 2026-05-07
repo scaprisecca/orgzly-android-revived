@@ -578,10 +578,10 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     private fun setupSharedImagesDirectoryPreference() {
         val pref = preference(R.string.pref_key_shared_images_relative_directory) as? EditTextPreference ?: return
         pref.text = AppPreferences.sharedImagesRelativeDirectory(context)
-        pref.summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
+        pref.summaryProvider = Preference.SummaryProvider<EditTextPreference> {
             getString(
                 R.string.shared_images_folder_summary_value,
-                AppPreferences.fileRelativeRoot(context),
+                AppPreferences.sharedImagesBaseDirectory(context),
                 AppPreferences.sharedImagesRelativeDirectory(context),
             )
         }

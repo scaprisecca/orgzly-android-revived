@@ -625,7 +625,7 @@
     <string name="scale_down_to_width_summary">Scale down image to specified width</string>
 
     <string name="shared_images_folder">Shared image folder</string>
-    <string name="shared_images_folder_summary">Folder under the relative file root where shared images are stored permanently</string>
+    <string name="shared_images_folder_summary">Folder under Orgzly app storage where shared images are stored permanently</string>
     <string name="shared_images_folder_summary_value">Saved in %1$s/%2$s</string>
 
     <string name="file_absolute_root">Root for absolute links (e.g. file:/readme.txt)</string>
