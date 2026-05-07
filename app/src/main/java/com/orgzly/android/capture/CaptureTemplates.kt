@@ -72,15 +72,15 @@ object CaptureTemplates {
         template: CaptureTemplate?,
         explicitBookId: Long?,
     ): BookView {
-        explicitBookId?.let { bookId ->
-            dataRepository.getBookView(bookId)?.let { return it }
-        }
-
         template?.let {
             val notebookName = AppPreferences.captureTemplateNotebook(context, it.id)
             if (!notebookName.isNullOrBlank()) {
                 dataRepository.getBookView(notebookName)?.let { book -> return book }
             }
+        }
+
+        explicitBookId?.let { bookId ->
+            dataRepository.getBookView(bookId)?.let { return it }
         }
 
         return dataRepository.getTargetBook(context)
@@ -110,7 +110,7 @@ object CaptureTemplates {
         }
 
         val state = when (template) {
-            CaptureTemplate.REPEATING_CHORE -> basePayload.state ?: "TODO"
+            CaptureTemplate.INBOX_TASK, CaptureTemplate.REPEATING_CHORE -> basePayload.state ?: "TODO"
             else -> basePayload.state
         }
 

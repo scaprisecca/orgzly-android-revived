@@ -72,8 +72,21 @@ class CaptureTemplatesTest {
     }
 
     @Test
-    fun explicitBookOverrideWinsDuringRouting() {
-        val defaultBook = dataRepository.createBook("Inbox")
+    fun inboxTaskDefaultsToTodoWhenGlobalDefaultStateIsBlank() {
+        AppPreferences.newNoteState(context, "")
+
+        val payload = CaptureTemplates.buildPayload(
+            context,
+            CaptureTemplate.INBOX_TASK,
+            CaptureInput(title = "Buy nails"),
+        )
+
+        assertThat(payload.state, `is`("TODO"))
+    }
+
+    @Test
+    fun templateNotebookWinsOverExplicitBookOverrideDuringRouting() {
+        val inboxBook = dataRepository.createBook("Inbox")
         val choresBook = dataRepository.createBook("Chores")
         AppPreferences.captureTemplateNotebook(context, CaptureTemplate.REPEATING_CHORE.id, "Chores")
 
@@ -81,11 +94,26 @@ class CaptureTemplatesTest {
             dataRepository,
             context,
             CaptureTemplate.REPEATING_CHORE,
-            defaultBook.book.id,
+            inboxBook.book.id,
         )
 
-        assertThat(resolved.book.id, `is`(defaultBook.book.id))
-        assertThat(choresBook.book.name, `is`("Chores"))
+        assertThat(resolved.book.id, `is`(choresBook.book.id))
+    }
+
+    @Test
+    fun explicitBookOverrideIsUsedWhenTemplateHasNoConfiguredNotebook() {
+        val inboxBook = dataRepository.createBook("Inbox")
+        val errandsBook = dataRepository.createBook("Errands")
+
+        val resolved = CaptureTemplates.resolveTargetBook(
+            dataRepository,
+            context,
+            CaptureTemplate.INBOX_TASK,
+            errandsBook.book.id,
+        )
+
+        assertThat(resolved.book.id, `is`(errandsBook.book.id))
+        assertThat(inboxBook.book.name, `is`("Inbox"))
     }
 
     @Test
