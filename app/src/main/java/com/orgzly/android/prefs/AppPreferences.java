@@ -889,6 +889,33 @@ public class AppPreferences {
         );
     }
 
+    public static String sharedImagesRelativeDirectory(Context context) {
+        String value = getDefaultSharedPreferences(context).getString(
+                context.getResources().getString(R.string.pref_key_shared_images_relative_directory),
+                context.getResources().getString(R.string.pref_default_shared_images_relative_directory)
+        );
+
+        if (value == null) {
+            value = context.getResources().getString(R.string.pref_default_shared_images_relative_directory);
+        }
+
+        value = value.replace('\\', '/').trim();
+
+        while (value.startsWith("/")) {
+            value = value.substring(1);
+        }
+
+        while (value.endsWith("/")) {
+            value = value.substring(0, value.length() - 1);
+        }
+
+        if (value.isEmpty()) {
+            value = context.getResources().getString(R.string.pref_default_shared_images_relative_directory);
+        }
+
+        return value;
+    }
+
     /*
      * Note's metadata visibility
      */

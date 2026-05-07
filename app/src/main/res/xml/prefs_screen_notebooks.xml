@@ -378,5 +378,11 @@
             app:min="1"
             android:dependency="@string/pref_key_images_scale_down_to_width"/>
 
+        <EditTextPreference
+            android:key="@string/pref_key_shared_images_relative_directory"
+            android:title="@string/shared_images_folder"
+            android:summary="@string/shared_images_folder_summary"
+            android:defaultValue="@string/pref_default_shared_images_relative_directory"/>
+
     </PreferenceCategory>
 </androidx.preference.PreferenceScreen>

@@ -309,8 +309,16 @@ public class ShareActivity extends CommonActivity
         CaptureTemplate template = null;
     }
 
+    private static class ImportedImage {
+        final String relativePath;
+
+        ImportedImage(String relativePath) {
+            this.relativePath = relativePath;
+        }
+    }
+
     /**
-     * Copy the shared image into app-accessible external cache storage
+     * Copy the shared image into persistent storage under the configured relative file root
      * and link to that copied file in the note content.
      */
     private void handleSendImage(Intent intent, Data data) {
@@ -351,23 +359,33 @@ public class ShareActivity extends CommonActivity
         data.title = displayName;
 
         try {
-            File copiedImage = copySharedImageToExternalCache(uri, displayName);
-            data.content = "file:" + copiedImage.getAbsolutePath();
+            ImportedImage importedImage = copySharedImageToRelativeStorage(uri, displayName);
+            data.content = "file:" + importedImage.relativePath;
         } catch (IOException e) {
             Log.e(TAG, "Failed to import shared image from " + uri, e);
             data.content = uri.toString() + "\n\nFailed to import shared image: " + e.getMessage();
         }
     }
 
-    private File copySharedImageToExternalCache(Uri uri, String displayName) throws IOException {
-        File baseDir = getExternalCacheDir();
-        if (baseDir == null) {
-            throw new IOException("External cache directory is not available");
+    private ImportedImage copySharedImageToRelativeStorage(Uri uri, String displayName) throws IOException {
+        File rootDir = new File(AppPreferences.fileRelativeRoot(this));
+        if (!rootDir.isDirectory() && !rootDir.mkdirs()) {
+            throw new IOException("Failed creating relative file root directory " + rootDir);
         }
 
-        File dir = new File(baseDir, "shared-images");
+        File canonicalRootDir = rootDir.getCanonicalFile();
+        String relativeDirectory = AppPreferences.sharedImagesRelativeDirectory(this);
+        File dir = new File(canonicalRootDir, relativeDirectory).getCanonicalFile();
+        String canonicalRootPath = canonicalRootDir.getPath();
+        String targetDirPath = dir.getPath();
+
+        if (!targetDirPath.equals(canonicalRootPath)
+                && !targetDirPath.startsWith(canonicalRootPath + File.separator)) {
+            throw new IOException("Shared image folder must stay under the relative file root");
+        }
+
         if (!dir.isDirectory() && !dir.mkdirs()) {
-            throw new IOException("Failed creating external cache directory " + dir);
+            throw new IOException("Failed creating shared image directory " + dir);
         }
 
         String safeName = sanitizeFileName(displayName);
@@ -395,7 +413,10 @@ public class ShareActivity extends CommonActivity
             }
         }
 
-        return target;
+        String relativePath = canonicalRootDir.toPath().relativize(target.getCanonicalFile().toPath()).toString()
+                .replace(File.separatorChar, '/');
+
+        return new ImportedImage(relativePath);
     }
 
     private String getExtensionForSharedImage(Uri uri) {

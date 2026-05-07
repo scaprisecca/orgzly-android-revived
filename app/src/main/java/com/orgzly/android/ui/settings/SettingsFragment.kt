@@ -121,6 +121,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             pref.text = AppPreferences.fileRelativeRoot(context)
         }
 
+        setupSharedImagesDirectoryPreference()
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             preference(R.string.pref_key_reminders_notification_settings_V26)?.let {
                 preferenceScreen.removePreference(it)
@@ -570,6 +572,18 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             pref.summaryProvider = Preference.SummaryProvider<ListPreference> { listPreference ->
                 captureTemplateNotebookSummary(listPreference)
             }
+        }
+    }
+
+    private fun setupSharedImagesDirectoryPreference() {
+        val pref = preference(R.string.pref_key_shared_images_relative_directory) as? EditTextPreference ?: return
+        pref.text = AppPreferences.sharedImagesRelativeDirectory(context)
+        pref.summaryProvider = Preference.SummaryProvider<EditTextPreference> { preference ->
+            getString(
+                R.string.shared_images_folder_summary_value,
+                AppPreferences.fileRelativeRoot(context),
+                AppPreferences.sharedImagesRelativeDirectory(context),
+            )
         }
     }
 
