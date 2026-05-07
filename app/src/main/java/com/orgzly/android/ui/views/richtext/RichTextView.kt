@@ -7,6 +7,7 @@ import android.text.Spannable
 import android.text.Spanned
 import android.text.TextUtils
 import android.text.style.ClickableSpan
+import android.text.style.ImageSpan
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -20,6 +21,7 @@ import com.orgzly.android.ui.SpanUtils
 import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.ui.views.style.CheckboxSpan
 import com.orgzly.android.ui.views.style.DrawerMarkerSpan
+import com.orgzly.android.ui.views.style.FileLinkSpan
 import com.orgzly.android.ui.views.style.Offsetting
 import com.orgzly.android.util.LogUtils
 
@@ -34,6 +36,7 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
         var onActionListener: ActionableRichTextView? = null)
 
     private val listeners = Listeners()
+    private var preferEditModeForInlineImages = false
 
     fun setOnTapUpListener(listener: OnTapUpListener) {
         listeners.onTapUp = listener
@@ -41,6 +44,10 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
 
     fun setOnActionListener(listener: ActionableRichTextView) {
         listeners.onActionListener = listener
+    }
+
+    fun setPreferEditModeForInlineImages(value: Boolean) {
+        preferEditModeForInlineImages = value
     }
 
 
@@ -90,6 +97,17 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
                 val clickableSpans = spanned.getSpans(charOffset, charOffset, ClickableSpan::class.java)
 
                 if (clickableSpans.isNotEmpty()) {
+                    resolveInlineImageEditOffset(event, layout, spanned, charOffset, clickableSpans[0])?.let { editOffset ->
+                        return when (event.action) {
+                            MotionEvent.ACTION_DOWN -> true
+                            MotionEvent.ACTION_UP -> {
+                                listeners.onTapUp?.onTapUp(event.x, event.y, editOffset)
+                                true
+                            }
+                            else -> true
+                        }
+                    }
+
                     return when (event.action) {
                         MotionEvent.ACTION_DOWN ->
                             true
@@ -122,6 +140,40 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
         val top = (layout.getLineTop(line) + totalPaddingTop).toFloat()
 
         return event.x in left..right && event.y in top..bottom
+    }
+
+    private fun resolveInlineImageEditOffset(
+        event: MotionEvent,
+        layout: Layout,
+        spanned: Spanned,
+        charOffset: Int,
+        clickableSpan: ClickableSpan,
+    ): Int? {
+        if (!preferEditModeForInlineImages || clickableSpan !is FileLinkSpan) {
+            return null
+        }
+
+        val imageSpans = spanned.getSpans(charOffset, charOffset, ImageSpan::class.java)
+        if (imageSpans.isEmpty()) {
+            return null
+        }
+
+        val spanStart = spanned.getSpanStart(clickableSpan)
+        val spanEnd = spanned.getSpanEnd(clickableSpan)
+        if (spanStart < 0 || spanEnd < spanStart) {
+            return null
+        }
+
+        val line = layout.getLineForOffset(charOffset)
+        val lineTop = (layout.getLineTop(line) + totalPaddingTop).toFloat()
+        val lineBottom = (layout.getLineBottom(line) + totalPaddingTop).toFloat()
+        val visibleOffset = if (event.y <= (lineTop + lineBottom) / 2f) spanStart else spanEnd
+
+        return visibleOffset + if (hideRichTextSymbols) {
+            offsettingSpansOffset(visibleOffset)
+        } else {
+            0
+        }
     }
 
     private val hideRichTextSymbols = !AppPreferences.styledTextWithMarks(context)

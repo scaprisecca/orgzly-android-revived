@@ -130,6 +130,7 @@ class RichText(context: Context, attrs: AttributeSet?) :
             if (attributes.editable) {
                 setTextIsSelectable(true)
             }
+            setPreferEditModeForInlineImages(attributes.editable)
 
             setOnTapUpListener { _, _, charOffset ->
                 if (attributes.editable) {
