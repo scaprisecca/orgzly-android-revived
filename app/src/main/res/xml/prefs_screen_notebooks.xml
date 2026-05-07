@@ -41,11 +41,11 @@
                     android:title="@string/capture_template_enabled"
                     android:defaultValue="true"/>
 
-                <EditTextPreference
+                <ListPreference
                     android:key="pref_key_capture_template_inbox_task_notebook"
                     android:title="@string/capture_template_target_notebook"
-                    android:dialogMessage="@string/capture_template_target_notebook_summary"
-                    app:useSimpleSummaryProvider="true"/>
+                    android:dialogTitle="@string/capture_template_target_notebook"
+                    android:defaultValue=""/>
 
                 <SwitchPreference
                     android:key="pref_key_capture_template_inbox_task_share_enabled"
@@ -59,11 +59,11 @@
                     android:title="@string/capture_template_enabled"
                     android:defaultValue="true"/>
 
-                <EditTextPreference
+                <ListPreference
                     android:key="pref_key_capture_template_repeating_chore_notebook"
                     android:title="@string/capture_template_target_notebook"
-                    android:dialogMessage="@string/capture_template_target_notebook_summary"
-                    app:useSimpleSummaryProvider="true"/>
+                    android:dialogTitle="@string/capture_template_target_notebook"
+                    android:defaultValue=""/>
 
                 <SwitchPreference
                     android:key="pref_key_capture_template_repeating_chore_share_enabled"
@@ -77,11 +77,11 @@
                     android:title="@string/capture_template_enabled"
                     android:defaultValue="true"/>
 
-                <EditTextPreference
+                <ListPreference
                     android:key="pref_key_capture_template_meeting_note_notebook"
                     android:title="@string/capture_template_target_notebook"
-                    android:dialogMessage="@string/capture_template_target_notebook_summary"
-                    app:useSimpleSummaryProvider="true"/>
+                    android:dialogTitle="@string/capture_template_target_notebook"
+                    android:defaultValue=""/>
 
                 <SwitchPreference
                     android:key="pref_key_capture_template_meeting_note_share_enabled"
@@ -95,11 +95,11 @@
                     android:title="@string/capture_template_enabled"
                     android:defaultValue="true"/>
 
-                <EditTextPreference
+                <ListPreference
                     android:key="pref_key_capture_template_learning_note_notebook"
                     android:title="@string/capture_template_target_notebook"
-                    android:dialogMessage="@string/capture_template_target_notebook_summary"
-                    app:useSimpleSummaryProvider="true"/>
+                    android:dialogTitle="@string/capture_template_target_notebook"
+                    android:defaultValue=""/>
 
                 <SwitchPreference
                     android:key="pref_key_capture_template_learning_note_share_enabled"
@@ -113,11 +113,11 @@
                     android:title="@string/capture_template_enabled"
                     android:defaultValue="true"/>
 
-                <EditTextPreference
+                <ListPreference
                     android:key="pref_key_capture_template_business_idea_notebook"
                     android:title="@string/capture_template_target_notebook"
-                    android:dialogMessage="@string/capture_template_target_notebook_summary"
-                    app:useSimpleSummaryProvider="true"/>
+                    android:dialogTitle="@string/capture_template_target_notebook"
+                    android:defaultValue=""/>
 
                 <SwitchPreference
                     android:key="pref_key_capture_template_business_idea_share_enabled"

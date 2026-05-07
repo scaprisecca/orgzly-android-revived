@@ -785,6 +785,7 @@
     <string name="capture_template_share_enabled">Available in share</string>
     <string name="capture_template_target_notebook">Target notebook</string>
     <string name="capture_template_target_notebook_summary">Leave empty to fall back to the default notebook</string>
+    <string name="capture_template_target_notebook_missing_summary">Missing notebook: %1$s. Using Default notebook.</string>
     <string name="capture_template_inbox_task">Inbox task</string>
     <string name="capture_template_repeating_chore">Repeating chore</string>
     <string name="capture_template_meeting_note">Meeting note</string>
