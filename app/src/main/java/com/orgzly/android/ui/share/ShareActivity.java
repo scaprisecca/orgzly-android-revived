@@ -9,6 +9,8 @@ import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
+import android.webkit.MimeTypeMap;
 import android.util.Log;
 
 import androidx.core.app.TaskStackBuilder;
@@ -44,7 +46,10 @@ import com.orgzly.android.util.LogUtils;
 import com.orgzly.android.util.MiscUtils;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -305,56 +310,130 @@ public class ShareActivity extends CommonActivity
     }
 
     /**
-     * Get file path from image shared with Orgzly
-     * and put it as a file link in the note's content.
+     * Copy the shared image into app-accessible external cache storage
+     * and link to that copied file in the note content.
      */
     private void handleSendImage(Intent intent, Data data) {
-        // Get file uri from intent which probably looks like this:
-        // content://media/external/images/...
         Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
 
-        try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
-            if (cursor != null) {
-                cursor.moveToFirst();
+        if (uri == null) {
+            data.title = "";
+            data.content = "Cannot find image using this URI.";
+            return;
+        }
 
+        String displayName = null;
+
+        try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
                 if (BuildConfig.LOG_DEBUG)
                     LogUtils.d(TAG, DatabaseUtils.dumpCursorToString(cursor));
 
-                /*
-                 * Get real file path from content:// link pointing to file
-                 * ( https://stackoverflow.com/a/20059657 )
-                 */
-                int dataColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
-
-                if (dataColumnIndex != -1) {
-                    String mediaData = cursor.getString(dataColumnIndex);
-                    if (mediaData != null) {
-                        data.content = "file:" + mediaData;
-                    }
+                int displayNameColumnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (displayNameColumnIndex == -1) {
+                    displayNameColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
                 }
-
-                if (data.content == null) {
-                    data.content = uri.toString()
-                            + "\n\nCannot determine path to this image "
-                            + "and only linking to an image is currently supported.";
-
-                    Log.e(TAG, DatabaseUtils.dumpCursorToString(cursor));
-                }
-
-                int displayNameColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
 
                 if (displayNameColumnIndex != -1) {
-                    data.title = cursor.getString(displayNameColumnIndex);
-                } else {
-                    data.title = uri.toString();
+                    displayName = cursor.getString(displayNameColumnIndex);
                 }
             }
         }
 
-        if (data.title == null) {
-            data.title = uri.toString();
-            data.content = "Cannot find image using this URI.";
+        if (displayName == null || displayName.trim().isEmpty()) {
+            displayName = uri.getLastPathSegment();
         }
+
+        if (displayName == null || displayName.trim().isEmpty()) {
+            displayName = "shared_image";
+        }
+
+        data.title = displayName;
+
+        try {
+            File copiedImage = copySharedImageToExternalCache(uri, displayName);
+            data.content = "file:" + copiedImage.getAbsolutePath();
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to import shared image from " + uri, e);
+            data.content = uri.toString() + "\n\nFailed to import shared image: " + e.getMessage();
+        }
+    }
+
+    private File copySharedImageToExternalCache(Uri uri, String displayName) throws IOException {
+        File baseDir = getExternalCacheDir();
+        if (baseDir == null) {
+            throw new IOException("External cache directory is not available");
+        }
+
+        File dir = new File(baseDir, "shared-images");
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            throw new IOException("Failed creating external cache directory " + dir);
+        }
+
+        String safeName = sanitizeFileName(displayName);
+        if (!safeName.contains(".")) {
+            String extension = getExtensionForSharedImage(uri);
+            if (!extension.isEmpty()) {
+                safeName = safeName + "." + extension;
+            }
+        }
+
+        File target = uniqueFile(dir, safeName);
+
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) {
+                throw new IOException("Unable to open shared image stream");
+            }
+
+            try (OutputStream out = new FileOutputStream(target)) {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, count);
+                }
+                out.flush();
+            }
+        }
+
+        return target;
+    }
+
+    private String getExtensionForSharedImage(Uri uri) {
+        String mimeType = getContentResolver().getType(uri);
+        if (mimeType == null) {
+            return "";
+        }
+
+        String extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType);
+        return extension != null ? extension : "";
+    }
+
+    private String sanitizeFileName(String displayName) {
+        String sanitized = displayName.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+        return sanitized.isEmpty() ? "shared_image" : sanitized;
+    }
+
+    private File uniqueFile(File dir, String fileName) {
+        File candidate = new File(dir, fileName);
+        if (!candidate.exists()) {
+            return candidate;
+        }
+
+        String name = fileName;
+        String extension = "";
+        int dot = fileName.lastIndexOf('.');
+        if (dot > 0) {
+            name = fileName.substring(0, dot);
+            extension = fileName.substring(dot);
+        }
+
+        int index = 1;
+        while (candidate.exists()) {
+            candidate = new File(dir, name + "_" + index + extension);
+            index++;
+        }
+
+        return candidate;
     }
 
     private void applyRoutingExtras(Intent intent, Data data) {
