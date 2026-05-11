@@ -4,7 +4,7 @@ import android.content.Context
 import com.orgzly.R
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.BookView
-import com.orgzly.android.prefs.AppPreferences
+import com.orgzly.android.db.entity.CaptureTemplateEntity
 import com.orgzly.android.ui.note.NoteBuilder
 import com.orgzly.android.ui.note.NotePayload
 import com.orgzly.org.OrgProperties
@@ -12,6 +12,10 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private fun captureTemplateDateString(): String {
+    return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+}
 
 enum class CaptureTemplate(
     val id: String,
@@ -28,6 +32,39 @@ enum class CaptureTemplate(
         fun fromId(id: String?): CaptureTemplate? {
             return values().firstOrNull { it.id == id }
         }
+
+        @JvmStatic
+        fun fromPresetKey(presetKey: String?): CaptureTemplate? {
+            return fromId(presetKey)
+        }
+    }
+
+    fun defaultTitle(context: Context, configuredTitle: String?): String {
+        if (!configuredTitle.isNullOrBlank()) {
+            return configuredTitle
+        }
+
+        return when (this) {
+            MEETING_NOTE -> context.getString(
+                R.string.capture_template_meeting_title_pattern,
+                captureTemplateDateString(),
+            )
+            else -> ""
+        }
+    }
+
+    fun resolveState(baseState: String?, configuredState: String?): String? {
+        return when (this) {
+            INBOX_TASK, REPEATING_CHORE -> configuredState ?: baseState ?: "TODO"
+            else -> configuredState ?: baseState
+        }
+    }
+
+    fun resolveScheduled(context: Context, baseScheduled: String?): String? {
+        return when (this) {
+            REPEATING_CHORE -> baseScheduled ?: NoteBuilder.initialScheduledTimeForTemplate(context)
+            else -> baseScheduled
+        }
     }
 }
 
@@ -38,23 +75,28 @@ data class CaptureInput @JvmOverloads constructor(
 
 object CaptureTemplates {
     @JvmStatic
-    fun enabledTemplates(context: Context): List<CaptureTemplate> {
-        return CaptureTemplate.values().filter {
-            AppPreferences.isCaptureTemplateEnabled(context, it.id)
-        }
+    fun enabledTemplates(dataRepository: DataRepository): List<CaptureTemplateEntity> {
+        return dataRepository.getEnabledCaptureTemplates()
     }
 
     @JvmStatic
-    fun shareEnabledTemplates(context: Context): List<CaptureTemplate> {
-        return enabledTemplates(context).filter {
-            AppPreferences.isCaptureTemplateShareEnabled(context, it.id)
+    fun shareEnabledTemplates(dataRepository: DataRepository): List<CaptureTemplateEntity> {
+        return dataRepository.getShareEnabledCaptureTemplates()
+    }
+
+    @JvmStatic
+    fun fromId(dataRepository: DataRepository, id: String?): CaptureTemplateEntity? {
+        if (id == null) {
+            return null
         }
+
+        return dataRepository.getCaptureTemplate(id)?.takeUnless { it.deleted }
     }
 
     @JvmStatic
     fun buildPayload(
         context: Context,
-        template: CaptureTemplate?,
+        template: CaptureTemplateEntity?,
         input: CaptureInput,
     ): NotePayload {
         return if (template == null) {
@@ -69,11 +111,11 @@ object CaptureTemplates {
     fun resolveTargetBook(
         dataRepository: DataRepository,
         context: Context,
-        template: CaptureTemplate?,
+        template: CaptureTemplateEntity?,
         explicitBookId: Long?,
     ): BookView {
         template?.let {
-            val notebookName = AppPreferences.captureTemplateNotebook(context, it.id)
+            val notebookName = it.targetNotebookName
             if (!notebookName.isNullOrBlank()) {
                 dataRepository.getBookView(notebookName)?.let { book -> return book }
             }
@@ -88,36 +130,31 @@ object CaptureTemplates {
 
     private fun buildTemplatePayload(
         context: Context,
-        template: CaptureTemplate,
+        template: CaptureTemplateEntity,
         input: CaptureInput,
     ): NotePayload {
-        val title = buildTitle(context, template, input)
+        val preset = CaptureTemplate.fromPresetKey(template.presetKey)
+        val title = buildTitle(context, template, input, preset)
         val basePayload = NoteBuilder.newPayload(context, title, null)
         val tags = LinkedHashSet(basePayload.tags)
         val properties = OrgProperties().apply {
             basePayload.properties.all.forEach { put(it.name, it.value) }
         }
 
-        when (template) {
-            CaptureTemplate.INBOX_TASK -> Unit
-            CaptureTemplate.REPEATING_CHORE -> tags.add("chore")
-            CaptureTemplate.MEETING_NOTE -> tags.add("meeting")
-            CaptureTemplate.LEARNING_NOTE -> tags.add("learning")
-            CaptureTemplate.BUSINESS_IDEA -> {
-                tags.add("business")
-                tags.add("idea")
+        template.tagsCsv
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.forEach(tags::add)
+
+        val state = when {
+            preset != null -> preset.resolveState(basePayload.state, template.defaultState)
+            template.templateKind == CaptureTemplateEntity.TEMPLATE_KIND_TASK -> {
+                template.defaultState ?: basePayload.state ?: "TODO"
             }
+            else -> template.defaultState ?: basePayload.state
         }
-
-        val state = when (template) {
-            CaptureTemplate.INBOX_TASK, CaptureTemplate.REPEATING_CHORE -> basePayload.state ?: "TODO"
-            else -> basePayload.state
-        }
-
-        val scheduled = when (template) {
-            CaptureTemplate.REPEATING_CHORE -> basePayload.scheduled ?: NoteBuilder.initialScheduledTimeForTemplate(context)
-            else -> basePayload.scheduled
-        }
+        val scheduled = preset?.resolveScheduled(context, basePayload.scheduled) ?: basePayload.scheduled
 
         return basePayload.copy(
             title = title,
@@ -129,52 +166,27 @@ object CaptureTemplates {
         )
     }
 
-    private fun buildTitle(context: Context, template: CaptureTemplate, input: CaptureInput): String {
+    private fun buildTitle(
+        context: Context,
+        template: CaptureTemplateEntity,
+        input: CaptureInput,
+        preset: CaptureTemplate?,
+    ): String {
         val suppliedTitle = input.title?.takeIf { it.isNotBlank() }
         if (suppliedTitle != null) {
             return suppliedTitle
         }
 
-        return when (template) {
-            CaptureTemplate.MEETING_NOTE -> context.getString(
-                R.string.capture_template_meeting_title_pattern,
-                dateString(),
-            )
-            else -> ""
-        }
+        return preset?.defaultTitle(context, template.titleTemplate) ?: template.titleTemplate.orEmpty()
     }
 
-    private fun buildContent(template: CaptureTemplate, incomingContent: String?): String? {
-        val scaffold = when (template) {
-            CaptureTemplate.INBOX_TASK -> null
-            CaptureTemplate.REPEATING_CHORE -> "* Notes\n"
-            CaptureTemplate.MEETING_NOTE -> """
-                * Attendees
-                * Agenda
-                * Notes
-                * Follow-ups
-            """.trimIndent()
-            CaptureTemplate.LEARNING_NOTE -> """
-                * Source
-                * Takeaway
-                * Follow-up / Review
-            """.trimIndent()
-            CaptureTemplate.BUSINESS_IDEA -> """
-                * Problem
-                * Idea
-                * Next step
-            """.trimIndent()
-        }
-
+    private fun buildContent(template: CaptureTemplateEntity, incomingContent: String?): String? {
+        val scaffold = template.bodyTemplate
         val shared = incomingContent?.trim()?.takeIf { it.isNotEmpty() }
         return when {
             scaffold.isNullOrBlank() -> shared
             shared == null -> scaffold
             else -> "$scaffold\n\n$shared"
         }
-    }
-
-    private fun dateString(): String {
-        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
     }
 }

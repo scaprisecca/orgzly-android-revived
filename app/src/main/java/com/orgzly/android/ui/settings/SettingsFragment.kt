@@ -14,9 +14,8 @@ import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.App
 import com.orgzly.android.AppIntent
-import com.orgzly.android.calendar.CalendarWorker
 import com.orgzly.android.SharingShortcutsManager
-import com.orgzly.android.capture.CaptureTemplate
+import com.orgzly.android.calendar.CalendarWorker
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.git.SshKey
 import com.orgzly.android.prefs.*
@@ -26,6 +25,7 @@ import com.orgzly.android.ui.CommonActivity
 import com.orgzly.android.ui.NoteStates
 import com.orgzly.android.ui.dialogs.ShowSshKeyDialogFragment
 import com.orgzly.android.ui.notifications.Notifications
+import com.orgzly.android.ui.capture.TemplateListFragment
 import com.orgzly.android.ui.util.KeyboardUtils
 import com.orgzly.android.usecase.NoteReparseStateAndTitles
 import com.orgzly.android.usecase.NoteSyncCreatedAtTimeWithProperty
@@ -109,7 +109,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         setupGitCommitPreference()
 
         setDefaultStateForNewNote()
-        setupCaptureTemplateNotebookPreferences()
+        setupCaptureTemplatePreference()
 
         preference(R.string.pref_key_file_absolute_root)?.let {
             val pref = it as EditTextPreference
@@ -549,29 +549,11 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         }
     }
 
-    private fun setupCaptureTemplateNotebookPreferences() {
-        val notebookNames = dataRepository.getBooks().map { it.book.name }
-        val entries = ArrayList<CharSequence>()
-        val entryValues = ArrayList<CharSequence>()
-
-        entries.add(getString(R.string.default_notebook))
-        entryValues.add("")
-
-        notebookNames.forEach { notebookName ->
-            entries.add(notebookName)
-            entryValues.add(notebookName)
-        }
-
-        CaptureTemplate.values().forEach { template ->
-            val pref = findPreference<ListPreference>("pref_key_capture_template_${template.id}_notebook")
-                ?: return@forEach
-
-            pref.entries = entries.toTypedArray()
-            pref.entryValues = entryValues.toTypedArray()
-            pref.value = AppPreferences.captureTemplateNotebook(context, template.id).orEmpty()
-            pref.summaryProvider = Preference.SummaryProvider<ListPreference> { listPreference ->
-                captureTemplateNotebookSummary(listPreference)
-            }
+    private fun setupCaptureTemplatePreference() {
+        preference(R.string.pref_key_manage_capture_templates)?.setOnPreferenceClickListener {
+            val fragment = TemplateListFragment()
+            (activity as? SettingsActivity)?.pushFragment(fragment)
+            true
         }
     }
 
@@ -584,16 +566,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 AppPreferences.sharedImagesBaseDirectory(context),
                 AppPreferences.sharedImagesRelativeDirectory(context),
             )
-        }
-    }
-
-    private fun captureTemplateNotebookSummary(preference: ListPreference): CharSequence {
-        val value = preference.value.orEmpty()
-
-        return when {
-            value.isBlank() -> getString(R.string.default_notebook)
-            preference.entry != null -> requireNotNull(preference.entry)
-            else -> getString(R.string.capture_template_target_notebook_missing_summary, value)
         }
     }
 

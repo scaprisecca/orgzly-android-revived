@@ -22,10 +22,10 @@ import com.orgzly.android.App;
 import com.orgzly.android.AppIntent;
 import com.orgzly.android.SharingShortcutsManager;
 import com.orgzly.android.capture.CaptureInput;
-import com.orgzly.android.capture.CaptureTemplate;
 import com.orgzly.android.capture.CaptureTemplates;
 import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.db.entity.Book;
+import com.orgzly.android.db.entity.CaptureTemplateEntity;
 import com.orgzly.android.db.entity.Note;
 import com.orgzly.android.db.entity.SavedSearch;
 import com.orgzly.android.prefs.AppPreferences;
@@ -52,6 +52,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import javax.inject.Inject;
 
@@ -306,7 +309,7 @@ public class ShareActivity extends CommonActivity
         String title;
         String content;
         Long bookId = null;
-        CaptureTemplate template = null;
+        CaptureTemplateEntity template = null;
     }
 
     private static class ImportedImage {
@@ -352,14 +355,11 @@ public class ShareActivity extends CommonActivity
             displayName = uri.getLastPathSegment();
         }
 
-        if (displayName == null || displayName.trim().isEmpty()) {
-            displayName = "shared_image";
-        }
-
-        data.title = displayName;
+        String fileName = buildSharedImageFileName(displayName, uri);
+        data.title = buildSharedImageTitle(fileName);
 
         try {
-            ImportedImage importedImage = copySharedImageToRelativeStorage(uri, displayName);
+            ImportedImage importedImage = copySharedImageToRelativeStorage(uri, fileName);
             data.content = "file:" + importedImage.relativePath;
         } catch (IOException e) {
             Log.e(TAG, "Failed to import shared image from " + uri, e);
@@ -426,9 +426,62 @@ public class ShareActivity extends CommonActivity
         return extension != null ? extension : "";
     }
 
+    private String buildSharedImageFileName(String displayName, Uri uri) {
+        String safeName = sanitizeFileName(displayName);
+        String extension = filenameExtension(safeName);
+
+        if (extension.isEmpty()) {
+            extension = getExtensionForSharedImage(uri);
+        }
+
+        String baseName = filenameBaseName(safeName);
+        if (baseName.isEmpty() || looksLikeGeneratedImageName(baseName)) {
+            baseName = "shared_image_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
+                    .format(new Date());
+        }
+
+        return extension.isEmpty() ? baseName : baseName + "." + extension;
+    }
+
+    private String buildSharedImageTitle(String fileName) {
+        String title = filenameBaseName(fileName)
+                .replace('_', ' ')
+                .replace('-', ' ')
+                .trim();
+
+        title = title.replaceAll("\\s+", " ");
+
+        return title.isEmpty() ? "Shared image" : title;
+    }
+
     private String sanitizeFileName(String displayName) {
-        String sanitized = displayName.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+        String sanitized = displayName == null ? "" : displayName.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
         return sanitized.isEmpty() ? "shared_image" : sanitized;
+    }
+
+    private String filenameBaseName(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        if (dot > 0) {
+            return fileName.substring(0, dot);
+        }
+
+        return fileName;
+    }
+
+    private String filenameExtension(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        if (dot > 0 && dot < fileName.length() - 1) {
+            return fileName.substring(dot + 1);
+        }
+
+        return "";
+    }
+
+    private boolean looksLikeGeneratedImageName(String name) {
+        return name.matches("\\d+")
+                || name.matches("(?i)shared[_ -]?image")
+                || name.matches("(?i)image")
+                || name.matches("(?i)img[_ -]?\\d+");
     }
 
     private File uniqueFile(File dir, String fileName) {
@@ -484,7 +537,9 @@ public class ShareActivity extends CommonActivity
                 LogUtils.d(TAG, "Using book " + data.bookId
                         + " from passed shortcut ID");
         }
-        data.template = CaptureTemplate.fromId(intent.getStringExtra(AppIntent.EXTRA_CAPTURE_TEMPLATE_ID));
+        data.template = CaptureTemplates.fromId(
+                dataRepository,
+                intent.getStringExtra(AppIntent.EXTRA_CAPTURE_TEMPLATE_ID));
     }
 
     private void openEditorForShareData(Data data) {
@@ -493,7 +548,7 @@ public class ShareActivity extends CommonActivity
             return;
         }
 
-        java.util.List<CaptureTemplate> shareTemplates = CaptureTemplates.shareEnabledTemplates(this);
+        java.util.List<CaptureTemplateEntity> shareTemplates = CaptureTemplates.shareEnabledTemplates(dataRepository);
 
         if (shareTemplates.isEmpty()) {
             showNoteEditor(data, null);
@@ -504,13 +559,13 @@ public class ShareActivity extends CommonActivity
             items[0] = getString(R.string.capture_template_blank_note);
 
             for (int i = 0; i < shareTemplates.size(); i++) {
-                items[i + 1] = getString(shareTemplates.get(i).getLabelRes());
+                items[i + 1] = shareTemplates.get(i).getName();
             }
 
             dialog = new AlertDialog.Builder(this)
                     .setTitle(R.string.capture_template_picker_title)
                     .setItems(items, (dialogInterface, which) -> {
-                        CaptureTemplate template = which == 0 ? null : shareTemplates.get(which - 1);
+                        CaptureTemplateEntity template = which == 0 ? null : shareTemplates.get(which - 1);
                         showNoteEditor(data, template);
                     })
                     .setNegativeButton(R.string.cancel, (dialogInterface, which) -> finish())
@@ -518,7 +573,7 @@ public class ShareActivity extends CommonActivity
         }
     }
 
-    private void showNoteEditor(Data data, CaptureTemplate template) {
+    private void showNoteEditor(Data data, CaptureTemplateEntity template) {
         try {
             long bookId = CaptureTemplates.resolveTargetBook(
                     dataRepository,

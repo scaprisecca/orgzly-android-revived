@@ -2188,6 +2188,35 @@ class DataRepository @Inject constructor(
         return db.savedSearch().get(id)
     }
 
+    fun getCaptureTemplate(id: String): CaptureTemplateEntity? {
+        return db.captureTemplate().get(id)
+    }
+
+    fun getCaptureTemplates(): List<CaptureTemplateEntity> {
+        return db.captureTemplate().getAll()
+    }
+
+    fun getEnabledCaptureTemplates(): List<CaptureTemplateEntity> {
+        return db.captureTemplate().getEnabled()
+    }
+
+    fun getShareEnabledCaptureTemplates(): List<CaptureTemplateEntity> {
+        return db.captureTemplate().getShareEnabled()
+    }
+
+    fun createCaptureTemplate(captureTemplate: CaptureTemplateEntity) {
+        val nextPosition = db.captureTemplate().getNextAvailablePosition() ?: 1
+        db.captureTemplate().upsert(captureTemplate.copy(position = nextPosition))
+    }
+
+    fun updateCaptureTemplate(captureTemplate: CaptureTemplateEntity) {
+        db.captureTemplate().upsert(captureTemplate)
+    }
+
+    fun deleteCaptureTemplate(id: String) {
+        db.captureTemplate().softDelete(id)
+    }
+
     fun getSavedSearches(): List<SavedSearch> {
         return db.savedSearch().getAll()
     }

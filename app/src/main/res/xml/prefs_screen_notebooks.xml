@@ -35,95 +35,10 @@
             app:useSimpleSummaryProvider="true"/>
 
         <PreferenceCategory android:title="@string/capture_templates">
-            <PreferenceCategory android:title="@string/capture_template_inbox_task">
-                <SwitchPreference
-                    android:key="pref_key_capture_template_inbox_task_enabled"
-                    android:title="@string/capture_template_enabled"
-                    android:defaultValue="true"/>
-
-                <ListPreference
-                    android:key="pref_key_capture_template_inbox_task_notebook"
-                    android:title="@string/capture_template_target_notebook"
-                    android:dialogTitle="@string/capture_template_target_notebook"
-                    android:defaultValue=""/>
-
-                <SwitchPreference
-                    android:key="pref_key_capture_template_inbox_task_share_enabled"
-                    android:title="@string/capture_template_share_enabled"
-                    android:defaultValue="true"/>
-            </PreferenceCategory>
-
-            <PreferenceCategory android:title="@string/capture_template_repeating_chore">
-                <SwitchPreference
-                    android:key="pref_key_capture_template_repeating_chore_enabled"
-                    android:title="@string/capture_template_enabled"
-                    android:defaultValue="true"/>
-
-                <ListPreference
-                    android:key="pref_key_capture_template_repeating_chore_notebook"
-                    android:title="@string/capture_template_target_notebook"
-                    android:dialogTitle="@string/capture_template_target_notebook"
-                    android:defaultValue=""/>
-
-                <SwitchPreference
-                    android:key="pref_key_capture_template_repeating_chore_share_enabled"
-                    android:title="@string/capture_template_share_enabled"
-                    android:defaultValue="true"/>
-            </PreferenceCategory>
-
-            <PreferenceCategory android:title="@string/capture_template_meeting_note">
-                <SwitchPreference
-                    android:key="pref_key_capture_template_meeting_note_enabled"
-                    android:title="@string/capture_template_enabled"
-                    android:defaultValue="true"/>
-
-                <ListPreference
-                    android:key="pref_key_capture_template_meeting_note_notebook"
-                    android:title="@string/capture_template_target_notebook"
-                    android:dialogTitle="@string/capture_template_target_notebook"
-                    android:defaultValue=""/>
-
-                <SwitchPreference
-                    android:key="pref_key_capture_template_meeting_note_share_enabled"
-                    android:title="@string/capture_template_share_enabled"
-                    android:defaultValue="true"/>
-            </PreferenceCategory>
-
-            <PreferenceCategory android:title="@string/capture_template_learning_note">
-                <SwitchPreference
-                    android:key="pref_key_capture_template_learning_note_enabled"
-                    android:title="@string/capture_template_enabled"
-                    android:defaultValue="true"/>
-
-                <ListPreference
-                    android:key="pref_key_capture_template_learning_note_notebook"
-                    android:title="@string/capture_template_target_notebook"
-                    android:dialogTitle="@string/capture_template_target_notebook"
-                    android:defaultValue=""/>
-
-                <SwitchPreference
-                    android:key="pref_key_capture_template_learning_note_share_enabled"
-                    android:title="@string/capture_template_share_enabled"
-                    android:defaultValue="true"/>
-            </PreferenceCategory>
-
-            <PreferenceCategory android:title="@string/capture_template_business_idea">
-                <SwitchPreference
-                    android:key="pref_key_capture_template_business_idea_enabled"
-                    android:title="@string/capture_template_enabled"
-                    android:defaultValue="true"/>
-
-                <ListPreference
-                    android:key="pref_key_capture_template_business_idea_notebook"
-                    android:title="@string/capture_template_target_notebook"
-                    android:dialogTitle="@string/capture_template_target_notebook"
-                    android:defaultValue=""/>
-
-                <SwitchPreference
-                    android:key="pref_key_capture_template_business_idea_share_enabled"
-                    android:title="@string/capture_template_share_enabled"
-                    android:defaultValue="true"/>
-            </PreferenceCategory>
+            <Preference
+                android:key="@string/pref_key_manage_capture_templates"
+                android:title="@string/manage_capture_templates"
+                android:summary="@string/manage_capture_templates_summary" />
         </PreferenceCategory>
 
         <SwitchPreference

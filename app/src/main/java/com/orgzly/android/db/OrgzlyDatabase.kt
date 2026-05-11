@@ -11,12 +11,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteQueryBuilder
 import com.orgzly.BuildConfig
+import com.orgzly.android.capture.CaptureTemplateSeeder
 import com.orgzly.android.db.dao.AppLogDao
 import com.orgzly.android.db.dao.BookDao
 import com.orgzly.android.db.dao.BookLinkDao
 import com.orgzly.android.db.dao.BookPropertyDao
 import com.orgzly.android.db.dao.BookSyncDao
 import com.orgzly.android.db.dao.BookViewDao
+import com.orgzly.android.db.dao.CaptureTemplateDao
 import com.orgzly.android.db.dao.DbRepoBookDao
 import com.orgzly.android.db.dao.NoteAncestorDao
 import com.orgzly.android.db.dao.NoteDao
@@ -36,6 +38,7 @@ import com.orgzly.android.db.entity.Book
 import com.orgzly.android.db.entity.BookLink
 import com.orgzly.android.db.entity.BookProperty
 import com.orgzly.android.db.entity.BookSync
+import com.orgzly.android.db.entity.CaptureTemplateEntity
 import com.orgzly.android.db.entity.DbRepoBook
 import com.orgzly.android.db.entity.Note
 import com.orgzly.android.db.entity.NoteAncestor
@@ -60,6 +63,7 @@ import java.util.Calendar
             BookLink::class,
             BookProperty::class,
             BookSync::class,
+            CaptureTemplateEntity::class,
             DbRepoBook::class,
             Note::class,
             NoteAncestor::class,
@@ -75,7 +79,7 @@ import java.util.Calendar
             AppLog::class
         ],
 
-        version = 158
+        version = 159
 )
 @TypeConverters(com.orgzly.android.db.TypeConverters::class)
 abstract class OrgzlyDatabase : RoomDatabase() {
@@ -85,6 +89,7 @@ abstract class OrgzlyDatabase : RoomDatabase() {
     abstract fun bookProperty(): BookPropertyDao
     abstract fun bookView(): BookViewDao
     abstract fun bookSync(): BookSyncDao
+    abstract fun captureTemplate(): CaptureTemplateDao
     abstract fun noteAncestor(): NoteAncestorDao
     abstract fun note(): NoteDao
     abstract fun noteView(): NoteViewDao
@@ -115,6 +120,7 @@ abstract class OrgzlyDatabase : RoomDatabase() {
         fun forMemory(context: Context): OrgzlyDatabase {
             return Room.inMemoryDatabaseBuilder(context.applicationContext, OrgzlyDatabase::class.java)
                     .allowMainThreadQueries()
+                    .addCallback(databaseCallback(context, insertDefaultSearches = false))
                     .build()
         }
 
@@ -152,20 +158,30 @@ abstract class OrgzlyDatabase : RoomDatabase() {
                             MIGRATION_154_155,
                             MIGRATION_155_156,
                             MIGRATION_156_157,
-                            MIGRATION_157_158
+                            MIGRATION_157_158,
+                            MIGRATION_158_159
                     )
-                    .addCallback(object : Callback() {
-                        override fun onCreate(db: SupportSQLiteDatabase) {
-                            if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Database created")
-
-                            insertDefaultSearches(db)
-                        }
-
-                        override fun onOpen(db: SupportSQLiteDatabase) {
-                            if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Database opened")
-                        }
-                    })
+                    .addCallback(databaseCallback(context, insertDefaultSearches = true))
                     .build()
+        }
+
+        private fun databaseCallback(context: Context, insertDefaultSearches: Boolean): Callback {
+            return object : Callback() {
+                override fun onCreate(db: SupportSQLiteDatabase) {
+                    if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Database created")
+
+                    if (insertDefaultSearches) {
+                        insertDefaultSearches(db)
+                    }
+                    CaptureTemplateSeeder.seedMissingTemplates(context, db)
+                }
+
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Database opened")
+
+                    CaptureTemplateSeeder.seedMissingTemplates(context, db)
+                }
+            }
         }
 
         fun insertDefaultSearches(db: SupportSQLiteDatabase) {
@@ -640,6 +656,34 @@ abstract class OrgzlyDatabase : RoomDatabase() {
                 } finally {
                     cursor.close()
                 }
+            }
+        }
+
+        private val MIGRATION_158_159 = object : Migration(158, 159) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `capture_templates` (" +
+                        "`id` TEXT NOT NULL, " +
+                        "`name` TEXT NOT NULL, " +
+                        "`source_type` TEXT NOT NULL, " +
+                        "`preset_key` TEXT, " +
+                        "`enabled` INTEGER NOT NULL, " +
+                        "`share_enabled` INTEGER NOT NULL, " +
+                        "`target_notebook_name` TEXT, " +
+                        "`title_template` TEXT, " +
+                        "`body_template` TEXT, " +
+                        "`default_state` TEXT, " +
+                        "`tags_csv` TEXT, " +
+                        "`template_kind` TEXT NOT NULL, " +
+                        "`position` INTEGER NOT NULL, " +
+                        "`deleted` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))"
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_capture_templates_preset_key` ON `capture_templates` (`preset_key`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_capture_templates_position` ON `capture_templates` (`position`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_capture_templates_enabled` ON `capture_templates` (`enabled`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_capture_templates_share_enabled` ON `capture_templates` (`share_enabled`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_capture_templates_deleted` ON `capture_templates` (`deleted`)")
             }
         }
     }

@@ -32,6 +32,8 @@ import com.orgzly.android.ui.repo.webdav.WebdavRepoActivity
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.ui.savedsearch.SavedSearchFragment
 import com.orgzly.android.ui.savedsearches.SavedSearchesFragment
+import com.orgzly.android.ui.capture.TemplateEditorFragment
+import com.orgzly.android.ui.capture.TemplateListFragment
 import com.orgzly.android.ui.settings.SettingsActivity
 import com.orgzly.android.ui.settings.SettingsFragment
 import com.orgzly.android.ui.settings.exporting.SettingsExportFragment
@@ -82,6 +84,8 @@ interface AppComponent {
     fun inject(arg: SettingsExportFragment)
     fun inject(arg: SettingsImportFragment)
     fun inject(arg: SyncFragment)
+    fun inject(arg: TemplateListFragment)
+    fun inject(arg: TemplateEditorFragment)
 
     fun inject(arg: SettingsFragment)
 

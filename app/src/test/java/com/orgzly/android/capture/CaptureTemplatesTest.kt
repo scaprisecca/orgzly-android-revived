@@ -2,14 +2,17 @@ package com.orgzly.android.capture
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.orgzly.R
 import com.orgzly.android.LocalStorage
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.DbRepoBookRepository
 import com.orgzly.android.db.OrgzlyDatabase
+import com.orgzly.android.db.entity.CaptureTemplateEntity
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.repos.RepoFactory
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.`is`
+import org.hamcrest.CoreMatchers.nullValue
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.After
 import org.junit.Before
@@ -17,6 +20,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -49,7 +55,7 @@ class CaptureTemplatesTest {
     fun meetingTemplatePreservesSharedTitleAndAppendsBody() {
         val payload = CaptureTemplates.buildPayload(
             context,
-            CaptureTemplate.MEETING_NOTE,
+            template(CaptureTemplate.MEETING_NOTE.id),
             CaptureInput(title = "Design sync", content = "Discuss capture flows"),
         )
 
@@ -60,10 +66,26 @@ class CaptureTemplatesTest {
     }
 
     @Test
+    fun meetingTemplateUsesDatedPresetTitleWhenBlank() {
+        val payload = CaptureTemplates.buildPayload(
+            context,
+            template(CaptureTemplate.MEETING_NOTE.id),
+            CaptureInput(content = "Discuss capture flows"),
+        )
+
+        val expectedTitle = context.getString(
+            R.string.capture_template_meeting_title_pattern,
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+        )
+
+        assertThat(payload.title, `is`(expectedTitle))
+    }
+
+    @Test
     fun repeatingChoreTemplateSchedulesByDefault() {
         val payload = CaptureTemplates.buildPayload(
             context,
-            CaptureTemplate.REPEATING_CHORE,
+            template(CaptureTemplate.REPEATING_CHORE.id),
             CaptureInput(title = "Take out trash"),
         )
 
@@ -77,7 +99,7 @@ class CaptureTemplatesTest {
 
         val payload = CaptureTemplates.buildPayload(
             context,
-            CaptureTemplate.INBOX_TASK,
+            template(CaptureTemplate.INBOX_TASK.id),
             CaptureInput(title = "Buy nails"),
         )
 
@@ -88,12 +110,12 @@ class CaptureTemplatesTest {
     fun templateNotebookWinsOverExplicitBookOverrideDuringRouting() {
         val inboxBook = dataRepository.createBook("Inbox")
         val choresBook = dataRepository.createBook("Chores")
-        AppPreferences.captureTemplateNotebook(context, CaptureTemplate.REPEATING_CHORE.id, "Chores")
+        dataRepository.updateCaptureTemplate(template(CaptureTemplate.REPEATING_CHORE.id).copy(targetNotebookName = "Chores"))
 
         val resolved = CaptureTemplates.resolveTargetBook(
             dataRepository,
             context,
-            CaptureTemplate.REPEATING_CHORE,
+            template(CaptureTemplate.REPEATING_CHORE.id),
             inboxBook.book.id,
         )
 
@@ -108,7 +130,7 @@ class CaptureTemplatesTest {
         val resolved = CaptureTemplates.resolveTargetBook(
             dataRepository,
             context,
-            CaptureTemplate.INBOX_TASK,
+            template(CaptureTemplate.INBOX_TASK.id),
             errandsBook.book.id,
         )
 
@@ -120,15 +142,85 @@ class CaptureTemplatesTest {
     fun templateNotebookFallbackIsUsedWhenPresent() {
         dataRepository.createBook("Inbox")
         val learningBook = dataRepository.createBook("Learning")
-        AppPreferences.captureTemplateNotebook(context, CaptureTemplate.LEARNING_NOTE.id, "Learning")
+        dataRepository.updateCaptureTemplate(template(CaptureTemplate.LEARNING_NOTE.id).copy(targetNotebookName = "Learning"))
 
         val resolved = CaptureTemplates.resolveTargetBook(
             dataRepository,
             context,
-            CaptureTemplate.LEARNING_NOTE,
+            template(CaptureTemplate.LEARNING_NOTE.id),
             null,
         )
 
         assertThat(resolved.book.id, `is`(learningBook.book.id))
+    }
+
+    @Test
+    fun fromIdUsesPersistedTemplates() {
+        val template = CaptureTemplates.fromId(dataRepository, CaptureTemplate.MEETING_NOTE.id)
+
+        assertThat(template?.id, `is`(CaptureTemplate.MEETING_NOTE.id))
+        assertThat(template?.name, `is`(context.getString(CaptureTemplate.MEETING_NOTE.labelRes)))
+    }
+
+    @Test
+    fun enabledAndShareEnabledTemplatesUsePersistedCatalogFilters() {
+        dataRepository.updateCaptureTemplate(template(CaptureTemplate.BUSINESS_IDEA.id).copy(enabled = false))
+        dataRepository.updateCaptureTemplate(template(CaptureTemplate.LEARNING_NOTE.id).copy(shareEnabled = false))
+
+        val enabled = CaptureTemplates.enabledTemplates(dataRepository)
+        val shareEnabled = CaptureTemplates.shareEnabledTemplates(dataRepository)
+
+        assertThat(enabled.any { it.id == CaptureTemplate.BUSINESS_IDEA.id }, `is`(false))
+        assertThat(enabled.any { it.id == CaptureTemplate.LEARNING_NOTE.id }, `is`(true))
+        assertThat(shareEnabled.any { it.id == CaptureTemplate.LEARNING_NOTE.id }, `is`(false))
+    }
+
+    @Test
+    fun customTemplateFieldsMapCleanlyIntoPayload() {
+        dataRepository.createCaptureTemplate(
+            CaptureTemplateEntity(
+                id = "custom-template",
+                name = "Custom template",
+                sourceType = CaptureTemplateEntity.SOURCE_TYPE_CUSTOM,
+                titleTemplate = "Scratchpad",
+                bodyTemplate = "* Prompt",
+                defaultState = "WAITING",
+                tagsCsv = "alpha, beta",
+                templateKind = CaptureTemplateEntity.TEMPLATE_KIND_NOTE,
+                position = 0,
+            ),
+        )
+
+        val payload = CaptureTemplates.buildPayload(
+            context,
+            template("custom-template"),
+            CaptureInput(content = "Shared snippet"),
+        )
+
+        assertThat(payload.title, `is`("Scratchpad"))
+        assertThat(payload.state, `is`("WAITING"))
+        assertThat(payload.tags, `is`(listOf("alpha", "beta")))
+        assertThat(payload.content, `is`("* Prompt\n\nShared snippet"))
+        assertThat(payload.scheduled, `is`(nullValue()))
+    }
+
+    @Test
+    fun deletedTemplateIdFallsBackSafely() {
+        dataRepository.deleteCaptureTemplate(CaptureTemplate.BUSINESS_IDEA.id)
+
+        val deletedTemplate = CaptureTemplates.fromId(dataRepository, CaptureTemplate.BUSINESS_IDEA.id)
+        val payload = CaptureTemplates.buildPayload(
+            context,
+            deletedTemplate,
+            CaptureInput(title = "Recovered title", content = "Recovered content"),
+        )
+
+        assertThat(deletedTemplate, `is`(nullValue()))
+        assertThat(payload.title, `is`("Recovered title"))
+        assertThat(payload.content, `is`("Recovered content"))
+    }
+
+    private fun template(id: String): CaptureTemplateEntity {
+        return requireNotNull(dataRepository.getCaptureTemplate(id))
     }
 }

@@ -2,6 +2,7 @@ package com.orgzly.android.ui.settings
 
 import android.os.Bundle
 import android.widget.FrameLayout
+import androidx.fragment.app.Fragment
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -62,12 +63,7 @@ class SettingsActivity : CommonActivity(), Listener {
     override fun onPreferenceScreen(resource: String) {
         val fragment = SettingsFragment.getInstance(resource)
 
-        supportFragmentManager
-                .beginTransaction()
-                .setCustomAnimations(R.anim.fragment_enter, R.anim.fragment_exit, R.anim.fragment_enter, R.anim.fragment_exit)
-                .addToBackStack(null)
-                .replace(R.id.activity_settings_container, fragment)
-                .commit()
+        pushFragment(fragment)
     }
 
     override fun onTitleChange(title: CharSequence?) {
@@ -113,6 +109,19 @@ class SettingsActivity : CommonActivity(), Listener {
 
     override fun recreateActivityForSettingsChange() {
         recreate()
+    }
+
+    fun pushFragment(fragment: Fragment) {
+        supportFragmentManager
+            .beginTransaction()
+            .setCustomAnimations(R.anim.fragment_enter, R.anim.fragment_exit, R.anim.fragment_enter, R.anim.fragment_exit)
+            .addToBackStack(null)
+            .replace(R.id.activity_settings_container, fragment)
+            .commit()
+    }
+
+    fun setToolbarTitle(title: CharSequence) {
+        binding.topToolbar.title = title
     }
 
     companion object {

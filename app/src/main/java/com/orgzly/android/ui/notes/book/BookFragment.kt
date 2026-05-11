@@ -21,10 +21,10 @@ import com.orgzly.R
 import com.orgzly.android.BookUtils
 import com.orgzly.android.NotesOrgExporter
 import com.orgzly.android.capture.CaptureInput
-import com.orgzly.android.capture.CaptureTemplate
 import com.orgzly.android.capture.CaptureTemplates
 import com.orgzly.android.db.NotesClipboard
 import com.orgzly.android.db.entity.Book
+import com.orgzly.android.db.entity.CaptureTemplateEntity
 import com.orgzly.android.db.entity.NoteView
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.sync.SyncRunner
@@ -338,10 +338,10 @@ class BookFragment :
     }
 
     private fun showCaptureTemplatePicker() {
-        val templates = CaptureTemplates.enabledTemplates(requireContext())
+        val templates = CaptureTemplates.enabledTemplates(dataRepository)
         val itemLabels = buildList {
             add(getString(R.string.capture_template_blank_note))
-            addAll(templates.map { getString(it.labelRes) })
+            addAll(templates.map { it.name })
         }
 
         dialog = MaterialAlertDialogBuilder(requireContext())
@@ -367,7 +367,7 @@ class BookFragment :
         listener?.onNoteNewRequest(notePlace)
     }
 
-    private fun openTemplatedNote(template: CaptureTemplate) {
+    private fun openTemplatedNote(template: CaptureTemplateEntity) {
         val targetBook = CaptureTemplates.resolveTargetBook(
             dataRepository,
             requireContext(),
