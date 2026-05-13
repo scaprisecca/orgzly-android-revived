@@ -91,6 +91,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
     private var dialog: AlertDialog? = null
     private var pendingTimestampInsertionMode: TimestampInsertionMode? = null
+    private var activePropertyValue: EditText? = null
 
     private lateinit var sharedMainActivityViewModel: SharedMainActivityViewModel
 
@@ -303,16 +304,18 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     }
 
     private fun updateEditorToolbar() {
-        val hasEditor = currentEditor() != null && binding.viewFlipper.displayedChild == 0
+        val richEditorActive = currentEditor() != null
+        val propertyValueActive = !richEditorActive && currentPropertyValue() != null
+        val hasEditor = (richEditorActive || propertyValueActive) && binding.viewFlipper.displayedChild == 0
         val contentEditorActive = binding.content.isBeingEdited()
         val scrollView = binding.scrollView
 
         binding.editorToolbarContainer.goneUnless(hasEditor)
-        binding.editorToolbarBold.isEnabled = hasEditor
-        binding.editorToolbarItalic.isEnabled = hasEditor
-        binding.editorToolbarLink.isEnabled = hasEditor
+        binding.editorToolbarBold.isEnabled = hasEditor && !propertyValueActive
+        binding.editorToolbarItalic.isEnabled = hasEditor && !propertyValueActive
+        binding.editorToolbarLink.isEnabled = hasEditor && !propertyValueActive
         binding.editorToolbarTimestamp.isEnabled = hasEditor
-        binding.editorToolbarMore.isEnabled = hasEditor
+        binding.editorToolbarMore.isEnabled = hasEditor && !propertyValueActive
         binding.editorToolbarBullet.isEnabled = contentEditorActive
         binding.editorToolbarCheckbox.isEnabled = contentEditorActive
 
@@ -348,6 +351,10 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         }
     }
 
+    private fun currentPropertyValue(): EditText? {
+        return activePropertyValue?.takeIf { it.isAttachedToWindow }
+    }
+
     private fun isContentEditorActive(): Boolean {
         return binding.content.isBeingEdited()
     }
@@ -380,6 +387,11 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     }
 
     private fun showTimestampActions() {
+        if (currentEditor() == null && currentPropertyValue() != null) {
+            launchPropertyTimestampDialog()
+            return
+        }
+
         if (binding.title.isBeingEdited()) {
             launchTimestampDialog(TimestampInsertionMode.INLINE)
             return
@@ -447,6 +459,19 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         TimestampDialogFragment.getInstance(
             editor.editViewId(),
             timeType,
+            emptySet(),
+            null,
+        ).show(childFragmentManager, TimestampDialogFragment.FRAGMENT_TAG)
+    }
+
+    private fun launchPropertyTimestampDialog() {
+        val propertyValue = currentPropertyValue() ?: return
+        activePropertyValue = propertyValue
+        pendingTimestampInsertionMode = TimestampInsertionMode.INLINE
+
+        TimestampDialogFragment.getInstance(
+            R.id.value,
+            TimeType.EVENT,
             emptySet(),
             null,
         ).show(childFragmentManager, TimestampDialogFragment.FRAGMENT_TAG)
@@ -710,13 +735,25 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             value.setText(propValue)
         }
 
+        value.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                activePropertyValue = value
+            }
+            updateEditorToolbar()
+        }
+
         remove.setOnClickListener {
+            if (activePropertyValue === value) {
+                activePropertyValue = null
+            }
+
             if (isOnlyProperty(propView) || isLastProperty(propView)) {
                 name.text = null
                 value.text = null
             } else {
                 binding.propertiesContainer.removeView(propView)
             }
+            updateEditorToolbar()
         }
 
         val propertyNameSuggestionAdapter = NotePropertySuggestionAdapter(
@@ -1137,7 +1174,32 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
                 }
                 pendingTimestampInsertionMode = null
             }
+
+            R.id.value -> {
+                if (time != null) {
+                    insertTimestampIntoPropertyValue(time.toString())
+                    ensureAlarmPermissions(time)
+                }
+                pendingTimestampInsertionMode = null
+            }
         }
+    }
+
+    private fun insertTimestampIntoPropertyValue(timestamp: String) {
+        val propertyValue = currentPropertyValue() ?: return
+        val text = propertyValue.text?.toString().orEmpty()
+        val selectionStart = propertyValue.selectionStart.coerceIn(0, text.length)
+        val selectionEnd = propertyValue.selectionEnd.coerceIn(0, text.length)
+        val selection = EditorSelection(
+            selectionStart.coerceAtMost(selectionEnd),
+            selectionStart.coerceAtLeast(selectionEnd),
+        )
+        val result = EditorToolbarActions.inlineTimestamp(text, selection, timestamp)
+
+        propertyValue.setText(result.text)
+        propertyValue.requestFocus()
+        propertyValue.setSelection(result.selection.start, result.selection.end)
+        updateEditorToolbar()
     }
 
     private fun ensureAlarmPermissions(time: OrgDateTime?) {

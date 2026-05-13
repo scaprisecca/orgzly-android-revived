@@ -153,7 +153,7 @@ class TimestampDialogFragment : DialogFragment(), View.OnClickListener {
     }
 
     private fun originatesFromEditor(): Boolean {
-        return originViewId == R.id.content_edit || originViewId == R.id.title_edit
+        return originViewId == R.id.content_edit || originViewId == R.id.title_edit || originViewId == R.id.value
     }
 
     /**
