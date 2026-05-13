@@ -149,11 +149,15 @@ class TimestampDialogFragment : DialogFragment(), View.OnClickListener {
     }
 
     private fun timestampIsInline(): Boolean {
-        return viewModel.timeType == TimeType.EVENT && originatesFromEditor()
+        return viewModel.timeType == TimeType.EVENT && originatesFromInlineTimestampTarget()
     }
 
-    private fun originatesFromEditor(): Boolean {
+    private fun originatesFromInlineTimestampTarget(): Boolean {
         return originViewId == R.id.content_edit || originViewId == R.id.title_edit || originViewId == R.id.value
+    }
+
+    private fun originatesFromRichTextEditor(): Boolean {
+        return originViewId == R.id.content_edit || originViewId == R.id.title_edit
     }
 
     /**
@@ -291,7 +295,7 @@ class TimestampDialogFragment : DialogFragment(), View.OnClickListener {
 
     override fun onDetach() {
         super.onDetach()
-        if (originatesFromEditor()) {
+        if (originatesFromRichTextEditor()) {
             originViewId.let {
                 val view = requireParentFragment().view?.findViewById<RichTextEdit>(it)
                 if (view != null)
