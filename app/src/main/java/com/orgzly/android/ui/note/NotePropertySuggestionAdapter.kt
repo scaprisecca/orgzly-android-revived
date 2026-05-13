@@ -45,9 +45,7 @@ class NotePropertySuggestionAdapter(
             }
 
             val altered = content.trim('+').toString()
-            val filtered = dictionary.filter {
-                it.lowercase().startsWith(altered.lowercase())
-            }
+            val filtered = NotePropertyNameMatcher.match(dictionary, altered)
 
             val results = FilterResults()
             results.values = FilteredSuggestions(
@@ -79,5 +77,44 @@ class NotePropertySuggestionAdapter(
             )
         }
 
+    }
+}
+
+internal object NotePropertyNameMatcher {
+    fun match(dictionary: List<String>, query: String): List<String> {
+        val normalizedQuery = query.trim().lowercase()
+        if (normalizedQuery.isEmpty()) return dictionary
+
+        return dictionary
+            .mapNotNull { item ->
+                score(item, normalizedQuery)?.let { score -> item to score }
+            }
+            .sortedWith(
+                compareBy<Pair<String, Int>> { it.second }
+                    .thenBy { it.first.lowercase() }
+            )
+            .map { it.first }
+    }
+
+    private fun score(item: String, normalizedQuery: String): Int? {
+        val normalizedItem = item.lowercase()
+
+        return when {
+            normalizedItem == normalizedQuery -> 0
+            normalizedItem.startsWith(normalizedQuery) -> 1
+            normalizedItem.contains(normalizedQuery) -> 2
+            isSubsequence(normalizedQuery, normalizedItem) -> 3
+            else -> null
+        }
+    }
+
+    private fun isSubsequence(query: String, item: String): Boolean {
+        var itemIndex = 0
+        for (queryChar in query) {
+            itemIndex = item.indexOf(queryChar, startIndex = itemIndex)
+            if (itemIndex == -1) return false
+            itemIndex++
+        }
+        return true
     }
 }

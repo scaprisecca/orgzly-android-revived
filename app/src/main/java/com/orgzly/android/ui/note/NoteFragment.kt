@@ -758,8 +758,9 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
         val propertyNameSuggestionAdapter = NotePropertySuggestionAdapter(
             requireContext(),
-            android.R.layout.simple_dropdown_item_1line
+            R.layout.dropdown_item
         )
+        name.threshold = 1
         name.setAdapter(propertyNameSuggestionAdapter)
 
         viewModel.propertyNames.observe(viewLifecycleOwner) {
