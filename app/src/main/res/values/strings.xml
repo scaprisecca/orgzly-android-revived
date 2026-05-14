@@ -826,7 +826,7 @@
     <string name="build_agenda_view">Build agenda view</string>
     <string name="write_raw_query">Write raw query</string>
     <string name="saved_search_builder_list_helper">Separate entries with commas or new lines</string>
-    <string name="saved_search_builder_properties_helper">Use NAME for property exists or NAME=VALUE for exact match</string>
+    <string name="saved_search_builder_properties_helper">Enter property name and value for matches. Examples: client=acme or client: acme. Use NAME alone only to find notes where that property exists.</string>
     <string name="saved_search_builder_preview_helper">Generated query preview</string>
     <string name="saved_search_builder_advanced_helper">Optional extra raw query appended to the guided filters</string>
     <string name="saved_search_builder_include_notebooks">Include notebooks</string>

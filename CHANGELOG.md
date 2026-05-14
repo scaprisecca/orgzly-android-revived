@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added saved-search metadata, property query filters, and agenda date-source options so guided views reopen for editing while staying compatible with the existing search engine.
 
 ### Fixed
+- Clarified guided saved-search property filter help text so users know exact matches require both the property name and value, for example `client=acme` or `client: acme`.
 - Fixed a crash after using the mobile timestamp toolbar while editing property values.
 - Fixed the note editor so the mobile timestamp toolbar can be used while editing property values, allowing inline Org timestamps to be inserted directly into metadata fields.
 - Fixed the note editor so when the formatting toolbar appears while you are already at the bottom of a note, the last lines stay visible instead of slipping under the toolbar.
