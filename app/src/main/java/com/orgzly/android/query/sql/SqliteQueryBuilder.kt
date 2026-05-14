@@ -233,7 +233,7 @@ class SqliteQueryBuilder(val context: Context) {
                 val selection = buildString {
                     append("EXISTS (SELECT 1 FROM note_properties WHERE note_properties.note_id = note_view.id AND LOWER(note_properties.name) = LOWER(?)")
                     if (expr.value != null) {
-                        append(" AND note_properties.value = ?")
+                        append(" AND LOWER(note_properties.value) = LOWER(?)")
                         arguments.add(expr.value)
                     }
                     append(")")
@@ -242,6 +242,13 @@ class SqliteQueryBuilder(val context: Context) {
             }
 
             is Condition.Event -> {
+                if (expr.interval.unit == QueryInterval.Unit.NONE) {
+                    return when (expr.relation) {
+                        Relation.NE -> "event_timestamp IS NOT NULL"
+                        else -> "event_timestamp IS NULL"
+                    }
+                }
+
                 when (expr.relation) {
                     Relation.EQ -> "(${toInterval("event_timestamp", null, expr.interval, Relation.GE)} AND ${toInterval("event_end_timestamp", null, expr.interval, Relation.LE)})"
                     Relation.NE -> "(${toInterval("event_timestamp", null, expr.interval, Relation.LT)} AND ${toInterval("event_end_timestamp", null, expr.interval, Relation.GT)})"
@@ -285,8 +292,12 @@ class SqliteQueryBuilder(val context: Context) {
 
     private fun toInterval(column: String, isActiveColumn: String?, interval: QueryInterval, relation: Relation): String {
         if (interval.unit == QueryInterval.Unit.NONE) {
-
-            return "$column IS NULL"
+            return when (relation) {
+                Relation.NE -> {
+                    if (isActiveColumn != null) "($isActiveColumn = 1 AND $column IS NOT NULL)" else "$column IS NOT NULL"
+                }
+                else -> "$column IS NULL"
+            }
         }
 
         val (field, value) = getFieldAndValueFromInterval(interval)

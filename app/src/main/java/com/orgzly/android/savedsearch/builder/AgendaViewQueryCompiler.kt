@@ -85,7 +85,7 @@ class AgendaViewQueryCompiler(
 
     private fun compileDateFilter(state: AgendaViewBuilderState): Condition? {
         return when (state.dateFilter) {
-            AgendaViewBuilderState.DateFilter.NONE,
+            AgendaViewBuilderState.DateFilter.NONE -> dateSourceExistenceFilter(state.dateSources)
             AgendaViewBuilderState.DateFilter.CUSTOM_ADVANCED -> null
             AgendaViewBuilderState.DateFilter.TODAY_OVERDUE -> dateSourceFilter("today", state.dateSources)
             AgendaViewBuilderState.DateFilter.NEXT_3 -> dateSourceFilter("3d", state.dateSources)
@@ -107,6 +107,21 @@ class AgendaViewQueryCompiler(
             if (dateSources.contains(AgendaDateSource.SCHEDULED)) add(Condition.Scheduled(interval, Relation.LE))
             if (dateSources.contains(AgendaDateSource.DEADLINE)) add(Condition.Deadline(interval, Relation.LE))
             if (dateSources.contains(AgendaDateSource.EVENT)) add(Condition.Event(interval, Relation.LE))
+        }
+
+        return when (conditions.size) {
+            0 -> null
+            1 -> conditions.first()
+            else -> Condition.Or(conditions)
+        }
+    }
+
+    private fun dateSourceExistenceFilter(dateSources: Set<AgendaDateSource>): Condition? {
+        val none = requireInterval("none")
+        val conditions = buildList {
+            if (dateSources.contains(AgendaDateSource.SCHEDULED)) add(Condition.Scheduled(none, Relation.NE))
+            if (dateSources.contains(AgendaDateSource.DEADLINE)) add(Condition.Deadline(none, Relation.NE))
+            if (dateSources.contains(AgendaDateSource.EVENT)) add(Condition.Event(none, Relation.NE))
         }
 
         return when (conditions.size) {

@@ -60,7 +60,7 @@ object AgendaPresetSeeds {
             name = "Calendar",
             state = AgendaViewBuilderState(
                 name = "Calendar",
-                includeNotebooks = listOf("calendar.org"),
+                includeNotebooks = listOf("calendar"),
                 excludeDone = true,
                 dateFilter = DateFilter.NEXT_7,
                 dateSources = linkedSetOf(AgendaDateSource.EVENT),
@@ -74,7 +74,7 @@ object AgendaPresetSeeds {
                 name = "Home",
                 excludeDone = true,
                 sort = SortPreference.PRIORITY,
-                advancedQuery = "(t.home or b.home.org)",
+                advancedQuery = "(t.home or b.home)",
             ),
         ),
         AgendaPresetSeed(
@@ -84,7 +84,7 @@ object AgendaPresetSeeds {
                 name = "Business",
                 excludeDone = true,
                 sort = SortPreference.PRIORITY,
-                advancedQuery = "(t.business or b.business.org)",
+                advancedQuery = "(t.business or b.business)",
             ),
         ),
         AgendaPresetSeed(
@@ -92,7 +92,7 @@ object AgendaPresetSeeds {
             name = "Recurring chores",
             state = AgendaViewBuilderState(
                 name = "Recurring chores",
-                includeNotebooks = listOf("routines.org"),
+                includeNotebooks = listOf("routines"),
                 excludeDone = true,
                 sort = SortPreference.PRIORITY,
             ),

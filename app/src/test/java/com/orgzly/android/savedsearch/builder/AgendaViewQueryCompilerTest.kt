@@ -38,4 +38,36 @@ class AgendaViewQueryCompilerTest {
             `is`(".it.done (s.today or d.today) o.s o.d o.p ad.1 ads.sd"),
         )
     }
+
+    @Test
+    fun compilesDateSourceOnlySearchAsDatePresenceFilter() {
+        val state = AgendaViewBuilderState(
+            name = "Scheduled only",
+            excludeDone = false,
+            dateFilter = AgendaViewBuilderState.DateFilter.NONE,
+            dateSources = linkedSetOf(AgendaDateSource.SCHEDULED),
+            sort = AgendaViewBuilderState.SortPreference.PRIORITY,
+        )
+
+        assertThat(
+            compiler.compileToString(state),
+            `is`("s.ne.none o.p o.b ads.s"),
+        )
+    }
+
+    @Test
+    fun compilesDateSourceOnlySearchWithMultipleSources() {
+        val state = AgendaViewBuilderState(
+            name = "All dated notes",
+            excludeDone = false,
+            dateFilter = AgendaViewBuilderState.DateFilter.NONE,
+            dateSources = linkedSetOf(AgendaDateSource.SCHEDULED, AgendaDateSource.DEADLINE, AgendaDateSource.EVENT),
+            sort = AgendaViewBuilderState.SortPreference.PRIORITY,
+        )
+
+        assertThat(
+            compiler.compileToString(state),
+            `is`("s.ne.none or d.ne.none or e.ne.none o.p o.b"),
+        )
+    }
 }

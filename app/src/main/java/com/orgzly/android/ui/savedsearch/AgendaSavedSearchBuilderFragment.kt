@@ -300,7 +300,7 @@ class AgendaSavedSearchBuilderFragment : CommonFragment(), DrawerItem {
                 if (trimmed.isEmpty()) {
                     null
                 } else {
-                    val parts = trimmed.split("=", limit = 2)
+                    val parts = trimmed.split("=", ":", limit = 2)
                     if (parts.size == 2) {
                         PropertyFilter(parts[0].trim(), PropertyFilter.Operator.EQUALS, parts[1].trim())
                     } else {
