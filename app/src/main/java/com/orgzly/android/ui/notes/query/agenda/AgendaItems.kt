@@ -1,6 +1,7 @@
 package com.orgzly.android.ui.notes.query.agenda
 
 import com.orgzly.android.db.entity.NoteView
+import com.orgzly.android.query.AgendaDateSource
 import com.orgzly.android.query.Query
 import com.orgzly.android.query.user.InternalQueryParser
 import com.orgzly.android.ui.TimeType
@@ -57,14 +58,14 @@ class AgendaItems(
     fun getList(
             notes: List<NoteView>, query: Query, item2databaseIds: MutableMap<Long, Long>
     ): List<AgendaItem> {
-
-        return getList(notes, item2databaseIds, query.options.agendaDays)
+        return getList(notes, item2databaseIds, query.options.agendaDays, query.options.agendaDateSources)
     }
 
     private fun getList(
             notes: List<NoteView>,
             item2databaseIds: MutableMap<Long, Long>,
-            agendaDays: Int
+            agendaDays: Int,
+            dateSources: Set<AgendaDateSource> = AgendaDateSource.defaultSet(),
     ): List<AgendaItem> {
 
         item2databaseIds.clear()
@@ -118,19 +119,25 @@ class AgendaItems(
         notes.forEach { note ->
             // Add planning times for a note only once
             if (!addedPlanningTimes.contains(note.note.id)) {
-                note.scheduledRangeString?.let {
-                    addInstances(note, TimeType.SCHEDULED, it)
+                if (dateSources.contains(AgendaDateSource.SCHEDULED)) {
+                    note.scheduledRangeString?.let {
+                        addInstances(note, TimeType.SCHEDULED, it)
+                    }
                 }
-                note.deadlineRangeString?.let {
-                    addInstances(note, TimeType.DEADLINE, it)
+                if (dateSources.contains(AgendaDateSource.DEADLINE)) {
+                    note.deadlineRangeString?.let {
+                        addInstances(note, TimeType.DEADLINE, it)
+                    }
                 }
 
                 addedPlanningTimes.add(note.note.id)
             }
 
             // Add each note's event
-            note.eventString?.let {
-                addInstances(note, TimeType.EVENT, it)
+            if (dateSources.contains(AgendaDateSource.EVENT)) {
+                note.eventString?.let {
+                    addInstances(note, TimeType.EVENT, it)
+                }
             }
         }
 

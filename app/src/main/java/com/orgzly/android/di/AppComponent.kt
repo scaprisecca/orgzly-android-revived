@@ -31,6 +31,7 @@ import com.orgzly.android.ui.repo.git.GitRepoActivity
 import com.orgzly.android.ui.repo.webdav.WebdavRepoActivity
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.ui.savedsearch.SavedSearchFragment
+import com.orgzly.android.ui.savedsearch.AgendaSavedSearchBuilderFragment
 import com.orgzly.android.ui.savedsearches.SavedSearchesFragment
 import com.orgzly.android.ui.capture.TemplateEditorFragment
 import com.orgzly.android.ui.capture.TemplateListFragment
@@ -80,6 +81,7 @@ interface AppComponent {
     fun inject(arg: NoteFragment)
     fun inject(arg: SavedSearchesFragment)
     fun inject(arg: SavedSearchFragment)
+    fun inject(arg: AgendaSavedSearchBuilderFragment)
     fun inject(arg: RefileFragment)
     fun inject(arg: SettingsExportFragment)
     fun inject(arg: SettingsImportFragment)

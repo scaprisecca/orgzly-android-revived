@@ -3,9 +3,10 @@ package com.orgzly.android.db.entity
 import androidx.room.*
 
 @Entity(
-        tableName = "searches"
+        tableName = "searches",
+        indices = [Index(value = ["presetKey"], unique = true)]
 )
-data class SavedSearch(
+data class SavedSearch @JvmOverloads constructor(
         @PrimaryKey(autoGenerate = true)
         val id: Long,
 
@@ -13,9 +14,20 @@ data class SavedSearch(
 
         val query: String,
 
-        val position: Int
+        val position: Int,
+
+        val builderMetadata: String? = null,
+
+        val builderMetadataVersion: Int? = null,
+
+        val presetKey: String? = null
 ) {
     fun areContentsTheSame(that: SavedSearch): Boolean {
-        return name == that.name && query == that.query && position == that.position
+        return name == that.name &&
+            query == that.query &&
+            position == that.position &&
+            builderMetadata == that.builderMetadata &&
+            builderMetadataVersion == that.builderMetadataVersion &&
+            presetKey == that.presetKey
     }
 }

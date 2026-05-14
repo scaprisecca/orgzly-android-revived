@@ -19,6 +19,15 @@ interface SavedSearchDao : BaseDao<SavedSearch> {
     @Query("SELECT * FROM searches WHERE name LIKE :name ORDER BY position, id")
     fun getAllByNameIgnoreCase(name: String): List<SavedSearch>
 
+    @Query("SELECT * FROM searches WHERE presetKey = :presetKey LIMIT 1")
+    fun getByPresetKey(presetKey: String): SavedSearch?
+
+    @Query("SELECT * FROM searches WHERE name = :name ORDER BY position, id")
+    fun getAllByExactName(name: String): List<SavedSearch>
+
+    @Query("SELECT * FROM searches WHERE name = :name AND query = :query ORDER BY position, id")
+    fun getAllByExactNameAndQuery(name: String, query: String): List<SavedSearch>
+
     @Query("SELECT * FROM searches WHERE position > :position ORDER BY position LIMIT 1")
     fun getFirstBelow(position: Int): SavedSearch?
 

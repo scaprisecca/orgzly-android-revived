@@ -39,6 +39,10 @@ open class BasicQueryParser : QueryParser() {
                 Condition.HasOwnTag(unQuote(match.groupValues[2]), match.groupValues[1].isNotEmpty())
             },
 
+            ConditionMatch("""^(-)?property:(.+)""") { match ->
+                parsePropertyCondition(match.groupValues[2], match.groupValues[1].isNotEmpty())
+            },
+
             ConditionMatch("""^(scheduled|deadline|closed|created):(?:(!=|<|<=|>|>=))?(.+)""") { match ->
                 val timeTypeMatch = match.groupValues[1]
                 val relationMatch = match.groupValues[2]
@@ -106,6 +110,29 @@ open class BasicQueryParser : QueryParser() {
             OptionMatch("""^agenda-days:(\d+)$""") { match, options ->
                 val days = match.groupValues[1].toInt()
                 if (days > 0) options.copy(agendaDays = days) else null
+            },
+            OptionMatch("""^agenda-date-sources:(.+)$""") { match, options ->
+                val sources = parseAgendaDateSources(match.groupValues[1])
+                if (sources.isNotEmpty()) options.copy(agendaDateSources = sources) else null
             }
     )
+
+    private fun parsePropertyCondition(raw: String, not: Boolean): Condition.HasProperty {
+        val parts = raw.split("=", limit = 2)
+        val name = unQuote(parts[0])
+        val value = parts.getOrNull(1)?.let(::unQuote)
+        return Condition.HasProperty(name, value, not)
+    }
+
+    private fun parseAgendaDateSources(raw: String): Set<AgendaDateSource> {
+        val result = linkedSetOf<AgendaDateSource>()
+        raw.split(",").map { it.trim().lowercase() }.forEach { token ->
+            when (token) {
+                "scheduled" -> result.add(AgendaDateSource.SCHEDULED)
+                "deadline" -> result.add(AgendaDateSource.DEADLINE)
+                "event" -> result.add(AgendaDateSource.EVENT)
+            }
+        }
+        return result
+    }
 }

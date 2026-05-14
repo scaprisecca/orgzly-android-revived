@@ -44,6 +44,10 @@ open class DottedQueryBuilder {
 
             is Condition.HasTag -> "${dot(expr.not)}t.${expr.tag}"
             is Condition.HasOwnTag -> "${dot(expr.not)}tn.${expr.tag}"
+            is Condition.HasProperty -> {
+                val prefix = "${dot(expr.not)}prop.${quotePropertyPart(expr.name)}"
+                expr.value?.let { "$prefix=${quotePropertyPart(it)}" } ?: prefix
+            }
 
             is Condition.Event -> {
                 val rel = expr.relation.toString().lowercase()
@@ -119,6 +123,16 @@ open class DottedQueryBuilder {
             if (default.agendaDays != options.agendaDays) {
                 list.add("ad.${options.agendaDays}")
             }
+            if (default.agendaDateSources != options.agendaDateSources) {
+                val sourceTokens = buildString {
+                    if (options.agendaDateSources.contains(AgendaDateSource.SCHEDULED)) append("s")
+                    if (options.agendaDateSources.contains(AgendaDateSource.DEADLINE)) append("d")
+                    if (options.agendaDateSources.contains(AgendaDateSource.EVENT)) append("e")
+                }
+                if (sourceTokens.isNotEmpty()) {
+                    list.add("ads.$sourceTokens")
+                }
+            }
         }
     }
 
@@ -129,6 +143,10 @@ open class DottedQueryBuilder {
         } else {
             QueryTokenizer.quote(s, " ")
         }
+    }
+
+    private fun quotePropertyPart(s: String): String {
+        return QueryTokenizer.quote(s, " =")
     }
 
     private fun dot(order: SortOrder) = if (order.desc) "." else ""

@@ -20,6 +20,7 @@ import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.SavedSearch
 import com.orgzly.android.savedsearch.FileSavedSearchStore
+import com.orgzly.android.savedsearch.builder.AgendaViewMetadataJson
 import com.orgzly.android.sync.SyncRunner
 import com.orgzly.android.ui.CommonFragment
 import com.orgzly.android.ui.OnViewHolderClickListener
@@ -233,7 +234,11 @@ class SavedSearchesFragment : CommonFragment(), DrawerItem, OnViewHolderClickLis
 
     override fun onClick(view: View, position: Int, item: SavedSearch) {
         if (viewAdapter.getSelection().count == 0) {
-            listener?.onSavedSearchEditRequest(item.id)
+            if (AgendaViewMetadataJson.deserialize(item) != null) {
+                listener?.onSavedSearchBuilderEditRequest(item.id)
+            } else {
+                listener?.onSavedSearchEditRequest(item.id)
+            }
 
         } else {
             viewAdapter.getSelection().toggle(item.id)
@@ -286,7 +291,7 @@ class SavedSearchesFragment : CommonFragment(), DrawerItem, OnViewHolderClickLis
 
                     binding.fab.run {
                         setOnClickListener {
-                            listener?.onSavedSearchNewRequest()
+                            showCreateDialog()
                         }
 
                         show()
@@ -320,10 +325,30 @@ class SavedSearchesFragment : CommonFragment(), DrawerItem, OnViewHolderClickLis
         sharedMainActivityViewModel.setCurrentFragment(FRAGMENT_TAG)
     }
 
+    private fun showCreateDialog() {
+        val options = arrayOf(
+            getString(R.string.build_agenda_view),
+            getString(R.string.write_raw_query),
+        )
+
+        dialog = AlertDialog.Builder(requireContext())
+            .setTitle(R.string.new_saved_search)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> listener?.onSavedSearchBuilderNewRequest()
+                    else -> listener?.onSavedSearchNewRequest()
+                }
+            }
+            .setOnDismissListener { dialog = null }
+            .show()
+    }
+
     interface Listener {
         fun onSavedSearchNewRequest()
+        fun onSavedSearchBuilderNewRequest()
         fun onSavedSearchDeleteRequest(ids: Set<Long>)
         fun onSavedSearchEditRequest(id: Long)
+        fun onSavedSearchBuilderEditRequest(id: Long)
         fun onSavedSearchMoveUpRequest(id: Long)
         fun onSavedSearchMoveDownRequest(id: Long)
         fun onSavedSearchesExportRequest(title: Int, message: String)

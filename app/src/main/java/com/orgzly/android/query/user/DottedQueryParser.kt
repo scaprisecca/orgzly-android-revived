@@ -40,6 +40,10 @@ open class DottedQueryParser : QueryParser() {
                 Condition.HasOwnTag(unQuote(match.groupValues[2]), match.groupValues[1].isNotEmpty())
             },
 
+            ConditionMatch("""^(\.)?prop\.(.+)""") { match ->
+                parsePropertyCondition(match.groupValues[2], match.groupValues[1].isNotEmpty())
+            },
+
             ConditionMatch("""^(e|s|d|c|cr)(?:\.(eq|ne|lt|le|gt|ge))?\.(.+)""") { match ->
                 val timeTypeMatch = match.groupValues[1]
                 val relationMatch = match.groupValues[2]
@@ -113,6 +117,29 @@ open class DottedQueryParser : QueryParser() {
             OptionMatch("""^ad\.(\d+)$""") { match, options ->
                 val days = match.groupValues[1].toInt()
                 if (days > 0) options.copy(agendaDays = days) else null
+            },
+            OptionMatch("""^ads\.([sde]+)$""") { match, options ->
+                val sources = parseAgendaDateSources(match.groupValues[1])
+                if (sources.isNotEmpty()) options.copy(agendaDateSources = sources) else null
             }
     )
+
+    private fun parsePropertyCondition(raw: String, not: Boolean): Condition.HasProperty {
+        val parts = raw.split("=", limit = 2)
+        val name = unQuote(parts[0])
+        val value = parts.getOrNull(1)?.let(::unQuote)
+        return Condition.HasProperty(name, value, not)
+    }
+
+    private fun parseAgendaDateSources(raw: String): Set<AgendaDateSource> {
+        val result = linkedSetOf<AgendaDateSource>()
+        raw.forEach { char ->
+            when (char) {
+                's' -> result.add(AgendaDateSource.SCHEDULED)
+                'd' -> result.add(AgendaDateSource.DEADLINE)
+                'e' -> result.add(AgendaDateSource.EVENT)
+            }
+        }
+        return result
+    }
 }

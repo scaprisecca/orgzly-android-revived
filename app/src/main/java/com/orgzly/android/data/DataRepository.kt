@@ -1231,7 +1231,7 @@ class DataRepository @Inject constructor(
         }
 
         if (query.options.agendaDays > 0) {
-            s.add("((scheduled_range_id IS NOT NULL AND scheduled_is_active = 1) OR (deadline_range_id IS NOT NULL AND deadline_is_active = 1) OR event_timestamp IS NOT NULL)")
+            s.add(buildAgendaExistenceClause(query.options.agendaDateSources))
         }
 
         if (!s.isEmpty() || !query.sortOrders.isEmpty()) {
@@ -1241,14 +1241,14 @@ class DataRepository @Inject constructor(
         val selection2 = if (s.isEmpty()) "0" else TextUtils.join(" AND ", s)
 
         // For agenda, group by event timestamp too
-        val groupBy = if (query.isAgenda()) {
-            "id, event_timestamp"
+        val groupBy = if (query.isAgenda() && query.options.agendaDateSources.contains(com.orgzly.android.query.AgendaDateSource.EVENT)) {
+            "note_view.id, event_timestamp"
         } else {
-            "id"
+            "note_view.id"
         }
 
         val supportQuery = SupportSQLiteQueryBuilder
-                .builder("(${NoteViewDao.QUERY_WITH_NOTE_EVENTS})")
+                .builder("(${NoteViewDao.QUERY_WITH_NOTE_EVENTS}) AS note_view")
                 .selection(selection2, selectionArgs.toTypedArray())
                 .groupBy(groupBy)
                 .having(having)
@@ -1260,6 +1260,26 @@ class DataRepository @Inject constructor(
                     + "with selection args $selectionArgs\n${supportQuery.sql}")
 
         return supportQuery
+    }
+
+    private fun buildAgendaExistenceClause(dateSources: Set<com.orgzly.android.query.AgendaDateSource>): String {
+        val clauses = mutableListOf<String>()
+
+        if (dateSources.contains(com.orgzly.android.query.AgendaDateSource.SCHEDULED)) {
+            clauses.add("(scheduled_range_id IS NOT NULL AND scheduled_is_active = 1)")
+        }
+        if (dateSources.contains(com.orgzly.android.query.AgendaDateSource.DEADLINE)) {
+            clauses.add("(deadline_range_id IS NOT NULL AND deadline_is_active = 1)")
+        }
+        if (dateSources.contains(com.orgzly.android.query.AgendaDateSource.EVENT)) {
+            clauses.add("event_timestamp IS NOT NULL")
+        }
+
+        if (clauses.isEmpty()) {
+            return "0"
+        }
+
+        return clauses.joinToString(prefix = "(", separator = " OR ", postfix = ")")
     }
 
     fun getNotes(bookName: String): List<NoteView> {

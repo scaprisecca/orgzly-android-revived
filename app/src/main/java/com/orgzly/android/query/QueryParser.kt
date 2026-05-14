@@ -33,6 +33,7 @@ abstract class QueryParser {
 
     fun parse(str: String): Query {
         orders.clear()
+        options = Options()
 
         tokenizer = QueryTokenizer(str, groupOpen, groupClose)
 

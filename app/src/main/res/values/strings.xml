@@ -822,6 +822,43 @@
     <string name="capture_template_meeting_title_pattern">Meeting %1$s</string>
     <string name="book_names_cannot_contain">Book names cannot contain \'../\'</string>
     <string name="is_active_label">Active</string>
+    <string name="new_saved_search">New saved search</string>
+    <string name="build_agenda_view">Build agenda view</string>
+    <string name="write_raw_query">Write raw query</string>
+    <string name="saved_search_builder_list_helper">Separate entries with commas or new lines</string>
+    <string name="saved_search_builder_properties_helper">Use NAME for property exists or NAME=VALUE for exact match</string>
+    <string name="saved_search_builder_preview_helper">Generated query preview</string>
+    <string name="saved_search_builder_advanced_helper">Optional extra raw query appended to the guided filters</string>
+    <string name="saved_search_builder_include_notebooks">Include notebooks</string>
+    <string name="saved_search_builder_exclude_notebooks">Exclude notebooks</string>
+    <string name="saved_search_builder_include_tags">Include tags</string>
+    <string name="saved_search_builder_exclude_tags">Exclude tags</string>
+    <string name="saved_search_builder_include_states">Include TODO states</string>
+    <string name="saved_search_builder_exclude_states">Exclude TODO states</string>
+    <string name="saved_search_builder_include_properties">Include properties</string>
+    <string name="saved_search_builder_exclude_properties">Exclude properties</string>
+    <string name="saved_search_builder_exclude_done">Exclude done tasks</string>
+    <string name="saved_search_builder_date_filter">Date filter</string>
+    <string name="saved_search_builder_date_sources">Agenda date sources</string>
+    <string name="saved_search_builder_date_source_scheduled">Scheduled</string>
+    <string name="saved_search_builder_date_source_deadline">Deadline</string>
+    <string name="saved_search_builder_date_source_event">Event</string>
+    <string name="saved_search_builder_sort">Sort</string>
+    <string name="saved_search_builder_advanced_query">Advanced raw query</string>
+    <string name="saved_search_builder_date_none">None</string>
+    <string name="saved_search_builder_date_today_overdue">Today / overdue</string>
+    <string name="saved_search_builder_date_next_3">Next 3 days</string>
+    <string name="saved_search_builder_date_next_7">Next 7 days</string>
+    <string name="saved_search_builder_date_next_14">Next 14 days</string>
+    <string name="saved_search_builder_date_next_30">Next 30 days</string>
+    <string name="saved_search_builder_date_no_date">No scheduled or deadline date</string>
+    <string name="saved_search_builder_date_custom">Advanced only</string>
+    <string name="saved_search_builder_sort_date">Date</string>
+    <string name="saved_search_builder_sort_priority">Priority</string>
+    <string name="saved_search_builder_sort_notebook">Notebook</string>
+    <string name="saved_search_builder_sort_event">Event</string>
+    <string name="select_at_least_one_date_source">Select at least one date source</string>
+    <string name="invalid_query">Invalid query</string>
 
     <string name="content_description_back_button">Navigate back</string>
 </resources>

@@ -52,6 +52,7 @@ import com.orgzly.android.db.entity.RookUrl
 import com.orgzly.android.db.entity.SavedSearch
 import com.orgzly.android.db.entity.VersionedRook
 import com.orgzly.android.db.mappers.OrgTimestampMapper
+import com.orgzly.android.savedsearch.AgendaPresetSeeder
 import com.orgzly.android.util.LogUtils
 import com.orgzly.org.OrgActiveTimestamps
 import com.orgzly.org.datetime.OrgDateTime
@@ -79,7 +80,7 @@ import java.util.Calendar
             AppLog::class
         ],
 
-        version = 159
+        version = 160
 )
 @TypeConverters(com.orgzly.android.db.TypeConverters::class)
 abstract class OrgzlyDatabase : RoomDatabase() {
@@ -159,7 +160,8 @@ abstract class OrgzlyDatabase : RoomDatabase() {
                             MIGRATION_155_156,
                             MIGRATION_156_157,
                             MIGRATION_157_158,
-                            MIGRATION_158_159
+                            MIGRATION_158_159,
+                            MIGRATION_159_160
                     )
                     .addCallback(databaseCallback(context, insertDefaultSearches = true))
                     .build()
@@ -172,6 +174,7 @@ abstract class OrgzlyDatabase : RoomDatabase() {
 
                     if (insertDefaultSearches) {
                         insertDefaultSearches(db)
+                        AgendaPresetSeeder.seedMissingPresets(db)
                     }
                     CaptureTemplateSeeder.seedMissingTemplates(context, db)
                 }
@@ -684,6 +687,16 @@ abstract class OrgzlyDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_capture_templates_enabled` ON `capture_templates` (`enabled`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_capture_templates_share_enabled` ON `capture_templates` (`share_enabled`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_capture_templates_deleted` ON `capture_templates` (`deleted`)")
+            }
+        }
+
+        private val MIGRATION_159_160 = object : Migration(159, 160) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE searches ADD COLUMN builderMetadata TEXT")
+                db.execSQL("ALTER TABLE searches ADD COLUMN builderMetadataVersion INTEGER")
+                db.execSQL("ALTER TABLE searches ADD COLUMN presetKey TEXT")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_searches_presetKey` ON `searches` (`presetKey`)")
+                AgendaPresetSeeder.seedMissingPresets(db)
             }
         }
     }

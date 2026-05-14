@@ -45,6 +45,8 @@ class QueryTest(private val param: Parameter) {
     )
 
     companion object {
+        private val DEFAULT_OPTIONS = Options()
+
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters
         fun data(): Collection<Parameter> {
@@ -80,7 +82,7 @@ class QueryTest(private val param: Parameter) {
                             expectedQueryString = "i.todo or i.next",
                             expectedSqlSelection = "(COALESCE(state, '') = ? OR COALESCE(state, '') = ?)",
                             expectedSelectionArgs = listOf("TODO", "NEXT"),
-                            expectedParsedQuery = "Query(condition=Or(operands=[HasState(state=todo, not=false), HasState(state=next, not=false)]), sortOrders=[], options=Options(agendaDays=0))"
+                            expectedParsedQuery = "Query(condition=Or(operands=[HasState(state=todo, not=false), HasState(state=next, not=false)]), sortOrders=[], options=$DEFAULT_OPTIONS)"
                     ),
                     Parameter(
                             queryString = "i.todo OR i.next",
@@ -223,6 +225,25 @@ class QueryTest(private val param: Parameter) {
                             expectedSelectionArgs = listOf()
                     ),
                     Parameter(
+                            queryString = "ads.sd ad.7",
+                            expectedQueryString = "ad.7 ads.sd",
+                            expectedSqlSelection = "",
+                            expectedSelectionArgs = listOf(),
+                            expectedQueryOptions = Options(agendaDays = 7, agendaDateSources = linkedSetOf(AgendaDateSource.SCHEDULED, AgendaDateSource.DEADLINE))
+                    ),
+                    Parameter(
+                            queryString = "prop.client",
+                            expectedQueryString = "prop.client",
+                            expectedSqlSelection = "(EXISTS (SELECT 1 FROM note_properties WHERE note_properties.note_id = id AND LOWER(note_properties.name) = LOWER(?)))",
+                            expectedSelectionArgs = listOf("client")
+                    ),
+                    Parameter(
+                            queryString = ".prop.client=\"acme corp\"",
+                            expectedQueryString = ".prop.client=\"acme corp\"",
+                            expectedSqlSelection = "(NOT(EXISTS (SELECT 1 FROM note_properties WHERE note_properties.note_id = id AND LOWER(note_properties.name) = LOWER(?) AND note_properties.value = ?)))",
+                            expectedSelectionArgs = listOf("client", "acme corp")
+                    ),
+                    Parameter(
                             queryString = "o.state",
                             expectedQueryString = "o.state",
                             expectedSqlSelection = "",
@@ -240,35 +261,35 @@ class QueryTest(private val param: Parameter) {
                     Parameter(
                             queryString = "\"or\"",
                             expectedQueryString = "\"or\"",
-                            expectedParsedQuery = "Query(condition=And(operands=[HasText(text=or, isQuoted=true)]), sortOrders=[], options=Options(agendaDays=0))",
+                            expectedParsedQuery = "Query(condition=And(operands=[HasText(text=or, isQuoted=true)]), sortOrders=[], options=$DEFAULT_OPTIONS)",
                             expectedSqlSelection = "((title LIKE ? OR content LIKE ? OR tags LIKE ?))",
                             expectedSelectionArgs = listOf("%or%", "%or%", "%or%")
                     ),
                     Parameter(
                             queryString = "\"\"",
                             expectedQueryString = "",
-                            expectedParsedQuery = "Query(condition=null, sortOrders=[], options=Options(agendaDays=0))"
+                            expectedParsedQuery = "Query(condition=null, sortOrders=[], options=$DEFAULT_OPTIONS)"
                     ),
                     Parameter(
                             queryString = "()",
                             expectedQueryString = "",
-                            expectedParsedQuery = "Query(condition=null, sortOrders=[], options=Options(agendaDays=0))"
+                            expectedParsedQuery = "Query(condition=null, sortOrders=[], options=$DEFAULT_OPTIONS)"
                     ),
                     Parameter(
                             queryString = "(o.s and o.d)",
                             expectedQueryString = "o.s o.d",
-                            expectedParsedQuery = "Query(condition=null, sortOrders=[Scheduled(desc=false), Deadline(desc=false)], options=Options(agendaDays=0))"
+                            expectedParsedQuery = "Query(condition=null, sortOrders=[Scheduled(desc=false), Deadline(desc=false)], options=$DEFAULT_OPTIONS)"
                     ),
 
                     Parameter(
                             queryString = "(o.s and (o.d))",
                             expectedQueryString = "o.s o.d",
-                            expectedParsedQuery = "Query(condition=null, sortOrders=[Scheduled(desc=false), Deadline(desc=false)], options=Options(agendaDays=0))"
+                            expectedParsedQuery = "Query(condition=null, sortOrders=[Scheduled(desc=false), Deadline(desc=false)], options=$DEFAULT_OPTIONS)"
                     ),
                     Parameter(
                             queryString = "(ad.3)",
                             expectedQueryString = "ad.3",
-                            expectedParsedQuery = "Query(condition=null, sortOrders=[], options=Options(agendaDays=3))"
+                            expectedParsedQuery = "Query(condition=null, sortOrders=[], options=${Options(agendaDays = 3)})"
                     ),
                     Parameter(
                             queryString = "s.ge.3d",

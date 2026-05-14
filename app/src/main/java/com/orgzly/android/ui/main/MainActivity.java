@@ -50,6 +50,7 @@ import com.orgzly.android.ui.notes.book.BookFragment;
 import com.orgzly.android.ui.notes.book.BookPrefaceFragment;
 import com.orgzly.android.ui.notifications.Notifications;
 import com.orgzly.android.ui.savedsearch.SavedSearchFragment;
+import com.orgzly.android.ui.savedsearch.AgendaSavedSearchBuilderFragment;
 import com.orgzly.android.ui.savedsearches.SavedSearchesFragment;
 import com.orgzly.android.ui.settings.SettingsActivity;
 import com.orgzly.android.ui.sync.SyncFragment;
@@ -91,6 +92,7 @@ import java.util.Set;
 public class MainActivity extends CommonActivity
         implements
         SavedSearchFragment.Listener,
+        AgendaSavedSearchBuilderFragment.Listener,
         SavedSearchesFragment.Listener,
         BooksFragment.Listener,
         BookFragment.Listener,
@@ -815,8 +817,18 @@ public class MainActivity extends CommonActivity
     }
 
     @Override
+    public void onSavedSearchBuilderNewRequest() {
+        DisplayManager.onSavedSearchBuilderNewRequest(getSupportFragmentManager());
+    }
+
+    @Override
     public void onSavedSearchEditRequest(long id) {
         DisplayManager.onSavedSearchEditRequest(getSupportFragmentManager(), id);
+    }
+
+    @Override
+    public void onSavedSearchBuilderEditRequest(long id) {
+        DisplayManager.onSavedSearchBuilderEditRequest(getSupportFragmentManager(), id);
     }
 
     @Override

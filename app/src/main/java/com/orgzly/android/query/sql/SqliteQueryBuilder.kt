@@ -228,6 +228,19 @@ class SqliteQueryBuilder(val context: Context) {
                 not(expr.not, "(COALESCE(tags, '') LIKE ?)")
             }
 
+            is Condition.HasProperty -> {
+                arguments.add(expr.name)
+                val selection = buildString {
+                    append("EXISTS (SELECT 1 FROM note_properties WHERE note_properties.note_id = note_view.id AND LOWER(note_properties.name) = LOWER(?)")
+                    if (expr.value != null) {
+                        append(" AND note_properties.value = ?")
+                        arguments.add(expr.value)
+                    }
+                    append(")")
+                }
+                not(expr.not, selection)
+            }
+
             is Condition.Event -> {
                 when (expr.relation) {
                     Relation.EQ -> "(${toInterval("event_timestamp", null, expr.interval, Relation.GE)} AND ${toInterval("event_end_timestamp", null, expr.interval, Relation.LE)})"
