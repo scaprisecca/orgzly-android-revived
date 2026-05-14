@@ -70,4 +70,27 @@ class AgendaViewQueryCompilerTest {
             `is`("s.ne.none or d.ne.none or e.ne.none o.p o.b"),
         )
     }
+
+    @Test
+    fun compilesPropertySearchWithoutImplicitDatePresenceFilter() {
+        val state = AgendaViewBuilderState(
+            name = "Client",
+            excludeDone = false,
+            includeProperties = listOf(
+                AgendaViewBuilderState.PropertyFilter(
+                    name = "client",
+                    operator = AgendaViewBuilderState.PropertyFilter.Operator.EQUALS,
+                    value = "acme",
+                ),
+            ),
+            dateFilter = AgendaViewBuilderState.DateFilter.NONE,
+            dateSources = linkedSetOf(AgendaDateSource.SCHEDULED, AgendaDateSource.DEADLINE, AgendaDateSource.EVENT),
+            sort = AgendaViewBuilderState.SortPreference.PRIORITY,
+        )
+
+        assertThat(
+            compiler.compileToString(state),
+            `is`("prop.client=acme o.p o.b"),
+        )
+    }
 }

@@ -234,13 +234,13 @@ class QueryTest(private val param: Parameter) {
                     Parameter(
                             queryString = "prop.client",
                             expectedQueryString = "prop.client",
-                            expectedSqlSelection = "(EXISTS (SELECT 1 FROM note_properties WHERE note_properties.note_id = id AND LOWER(note_properties.name) = LOWER(?)))",
+                            expectedSqlSelection = "(EXISTS (SELECT 1 FROM note_properties WHERE note_properties.note_id = note_view.id AND LOWER(note_properties.name) = LOWER(?)))",
                             expectedSelectionArgs = listOf("client")
                     ),
                     Parameter(
                             queryString = ".prop.client=\"acme corp\"",
                             expectedQueryString = ".prop.client=\"acme corp\"",
-                            expectedSqlSelection = "(NOT(EXISTS (SELECT 1 FROM note_properties WHERE note_properties.note_id = id AND LOWER(note_properties.name) = LOWER(?) AND note_properties.value = ?)))",
+                            expectedSqlSelection = "(NOT(EXISTS (SELECT 1 FROM note_properties WHERE note_properties.note_id = note_view.id AND LOWER(note_properties.name) = LOWER(?) AND LOWER(note_properties.value) = LOWER(?))))",
                             expectedSelectionArgs = listOf("client", "acme corp")
                     ),
                     Parameter(

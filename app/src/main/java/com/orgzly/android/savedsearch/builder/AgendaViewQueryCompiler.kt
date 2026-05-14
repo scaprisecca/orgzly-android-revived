@@ -26,11 +26,13 @@ class AgendaViewQueryCompiler(
         addPropertyGroup(conditionParts, state.includeProperties, false)
         addPropertyGroup(conditionParts, state.excludeProperties, true)
 
+        val hasScopedFilters = conditionParts.isNotEmpty()
+
         if (state.excludeDone) {
             conditionParts.add(Condition.HasStateType(StateType.DONE, not = true))
         }
 
-        compileDateFilter(state)?.let(conditionParts::add)
+        compileDateFilter(state, requirePresenceForNone = !hasScopedFilters)?.let(conditionParts::add)
 
         val baseCondition = conditionParts.toCondition()
         val baseQuery = Query(
@@ -83,9 +85,14 @@ class AgendaViewQueryCompiler(
         }
     }
 
-    private fun compileDateFilter(state: AgendaViewBuilderState): Condition? {
+    private fun compileDateFilter(
+        state: AgendaViewBuilderState,
+        requirePresenceForNone: Boolean,
+    ): Condition? {
         return when (state.dateFilter) {
-            AgendaViewBuilderState.DateFilter.NONE -> dateSourceExistenceFilter(state.dateSources)
+            AgendaViewBuilderState.DateFilter.NONE -> {
+                if (requirePresenceForNone) dateSourceExistenceFilter(state.dateSources) else null
+            }
             AgendaViewBuilderState.DateFilter.CUSTOM_ADVANCED -> null
             AgendaViewBuilderState.DateFilter.TODAY_OVERDUE -> dateSourceFilter("today", state.dateSources)
             AgendaViewBuilderState.DateFilter.NEXT_3 -> dateSourceFilter("3d", state.dateSources)
