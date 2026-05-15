@@ -11,6 +11,7 @@ import com.orgzly.android.data.mappers.OrgMapper
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Note
 import com.orgzly.android.db.entity.NoteView
+import com.orgzly.android.link.OrgRoamLinkTarget
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.ui.CommonViewModel
 import com.orgzly.android.ui.NotePlace
@@ -35,6 +36,12 @@ data class NoteInitialData(
     val title: String? = null, // Initial title, used for when sharing
     val content: String? = null, // Initial content, used for when sharing
     val payload: NotePayload? = null,
+)
+
+data class OrgRoamLinkSearchResult(
+    val query: String,
+    val includeWithoutIds: Boolean,
+    val targets: List<OrgRoamLinkTarget>,
 )
 
 class NoteViewModel(
@@ -68,6 +75,8 @@ class NoteViewModel(
     var notePayload: NotePayload? = null
 
     val propertyNames = MutableLiveData<List<String>>()
+    val orgRoamLinkTargetsEvent: SingleLiveEvent<OrgRoamLinkSearchResult> = SingleLiveEvent()
+    val orgRoamLinkTargetReadyEvent: SingleLiveEvent<OrgRoamLinkTarget> = SingleLiveEvent()
 
     private var originalHash: Long = 0L
 
@@ -127,6 +136,45 @@ class NoteViewModel(
     fun requestNoteBookChange() {
         App.EXECUTORS.diskIO().execute {
             bookChangeRequestEvent.postValue(dataRepository.getBooks())
+        }
+    }
+
+    fun searchOrgRoamLinkTargets(query: String, includeWithoutIds: Boolean) {
+        App.EXECUTORS.diskIO().execute {
+            catchAndPostError {
+                orgRoamLinkTargetsEvent.postValue(
+                    OrgRoamLinkSearchResult(
+                        query = query,
+                        includeWithoutIds = includeWithoutIds,
+                        targets = dataRepository.searchOrgRoamLinkTargets(query, includeWithoutIds),
+                    ),
+                )
+            }
+        }
+    }
+
+    fun ensureOrgRoamTargetId(target: OrgRoamLinkTarget) {
+        App.EXECUTORS.diskIO().execute {
+            catchAndPostError {
+                require(target.type == OrgRoamLinkTarget.Type.NOTE) {
+                    "Only note targets can receive a new ID"
+                }
+                val noteId = requireNotNull(target.noteId) { "Target note ID missing" }
+                val id = dataRepository.ensureNoteId(noteId)
+                orgRoamLinkTargetReadyEvent.postValue(
+                    target.copy(id = id, requiresIdCreation = false),
+                )
+            }
+        }
+    }
+
+    fun createLinkedOrgRoamNote(title: String) {
+        App.EXECUTORS.diskIO().execute {
+            catchAndPostError {
+                orgRoamLinkTargetReadyEvent.postValue(
+                    dataRepository.createLinkedNoteTarget(bookId, title),
+                )
+            }
         }
     }
 

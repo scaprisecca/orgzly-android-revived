@@ -27,7 +27,10 @@ import androidx.core.net.toUri
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
 import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.App
@@ -36,6 +39,7 @@ import com.orgzly.android.NotesOrgExporter
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Note
+import com.orgzly.android.link.OrgRoamLinkTarget
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.sync.SyncRunner
 import com.orgzly.android.ui.Breadcrumbs
@@ -53,6 +57,7 @@ import com.orgzly.android.ui.notes.book.BookFragment
 import com.orgzly.android.ui.settings.SettingsActivity
 import com.orgzly.android.ui.share.ShareActivity
 import com.orgzly.android.ui.showSnackbar
+import com.orgzly.android.ui.note.link.OrgRoamLinkTargetsAdapter
 import com.orgzly.android.ui.util.ActivityUtils
 import com.orgzly.android.ui.util.KeyboardUtils
 import com.orgzly.android.ui.util.getAlarmManager
@@ -92,6 +97,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     private var dialog: AlertDialog? = null
     private var pendingTimestampInsertionMode: TimestampInsertionMode? = null
     private var activePropertyValue: EditText? = null
+    private var pendingOrgRoamLinkInsertion: PendingOrgRoamLinkInsertion? = null
+    private var orgRoamLinkPickerState: OrgRoamLinkPickerState? = null
 
     private lateinit var sharedMainActivityViewModel: SharedMainActivityViewModel
 
@@ -296,7 +303,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
         binding.editorToolbarBold.setOnClickListener { applyEditorAction(ToolbarAction.BOLD) }
         binding.editorToolbarItalic.setOnClickListener { applyEditorAction(ToolbarAction.ITALIC) }
-        binding.editorToolbarLink.setOnClickListener { applyEditorAction(ToolbarAction.LINK) }
+        binding.editorToolbarLink.setOnClickListener { launchOrgRoamLinkPicker() }
         binding.editorToolbarBullet.setOnClickListener { applyEditorAction(ToolbarAction.BULLET) }
         binding.editorToolbarCheckbox.setOnClickListener { applyEditorAction(ToolbarAction.CHECKBOX) }
         binding.editorToolbarTimestamp.setOnClickListener { showTimestampActions() }
@@ -462,6 +469,176 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             emptySet(),
             null,
         ).show(childFragmentManager, TimestampDialogFragment.FRAGMENT_TAG)
+    }
+
+    private fun launchOrgRoamLinkPicker() {
+        val insertion = capturePendingOrgRoamLinkInsertion() ?: return
+        pendingOrgRoamLinkInsertion = insertion
+        currentEditor()?.preserveEditModeOnNextFocusLoss()
+
+        val dialogView = layoutInflater.inflate(R.layout.dialog_org_roam_link_picker, null)
+        val search = dialogView.findViewById<TextInputEditText>(R.id.search)
+        val includeWithoutIds = dialogView.findViewById<MaterialCheckBox>(R.id.include_without_ids)
+        val empty = dialogView.findViewById<TextView>(R.id.empty)
+        val results = dialogView.findViewById<RecyclerView>(R.id.results)
+        val adapter = OrgRoamLinkTargetsAdapter(
+            object : OrgRoamLinkTargetsAdapter.Listener {
+                override fun onTargetSelected(target: OrgRoamLinkTarget) {
+                    handleOrgRoamTargetSelected(target)
+                }
+
+                override fun onCreateRequested(title: String) {
+                    dismissOrgRoamLinkPicker()
+                    viewModel.createLinkedOrgRoamNote(title)
+                }
+            },
+        )
+
+        results.adapter = adapter
+        orgRoamLinkPickerState = OrgRoamLinkPickerState(search, includeWithoutIds, empty, adapter)
+
+        val requestSearch = {
+            viewModel.searchOrgRoamLinkTargets(
+                search.text?.toString().orEmpty(),
+                includeWithoutIds.isChecked,
+            )
+        }
+
+        search.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable) {
+                requestSearch()
+            }
+        })
+        includeWithoutIds.setOnCheckedChangeListener { _, _ ->
+            requestSearch()
+        }
+
+        dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.org_roam_link_picker_title)
+            .setView(dialogView)
+            .setNegativeButton(R.string.cancel, null)
+            .setOnDismissListener {
+                orgRoamLinkPickerState = null
+            }
+            .show()
+
+        search.requestFocus()
+        requestSearch()
+    }
+
+    private fun handleOrgRoamTargetSelected(target: OrgRoamLinkTarget) {
+        if (target.hasDuplicateId) {
+            activity?.showSnackbar(R.string.org_roam_link_picker_duplicate_id_error)
+            return
+        }
+
+        if (target.requiresIdCreation) {
+            dismissOrgRoamLinkPicker()
+            showOrgRoamAddIdConfirmation(target)
+            return
+        }
+
+        dismissOrgRoamLinkPicker()
+        insertOrgRoamLink(target)
+    }
+
+    private fun showOrgRoamAddIdConfirmation(target: OrgRoamLinkTarget) {
+        pendingOrgRoamLinkInsertion?.let { pending ->
+            editorForPendingOrgRoamLinkInsertion(pending)?.preserveEditModeOnNextFocusLoss()
+        }
+
+        dialog = MaterialAlertDialogBuilder(requireContext())
+            .setMessage(getString(R.string.org_roam_link_picker_add_id_confirmation, target.title))
+            .setPositiveButton(R.string.ok) { _, _ ->
+                viewModel.ensureOrgRoamTargetId(target)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun dismissOrgRoamLinkPicker() {
+        orgRoamLinkPickerState = null
+        dialog?.dismiss()
+        dialog = null
+    }
+
+    private fun capturePendingOrgRoamLinkInsertion(): PendingOrgRoamLinkInsertion? {
+        val editorType = when {
+            binding.title.isBeingEdited() -> PendingOrgRoamLinkInsertion.Editor.TITLE
+            binding.content.isBeingEdited() -> PendingOrgRoamLinkInsertion.Editor.CONTENT
+            else -> return null
+        }
+
+        val editor = editorForPendingOrgRoamLinkInsertion(
+            PendingOrgRoamLinkInsertion(editorType, EditorSelection(0, 0)),
+        ) ?: return null
+
+        return PendingOrgRoamLinkInsertion(
+            editor = editorType,
+            selection = EditorSelection(editor.currentSelectionStart(), editor.currentSelectionEnd()),
+        )
+    }
+
+    private fun updateOrgRoamLinkPicker(searchResult: OrgRoamLinkSearchResult) {
+        val state = orgRoamLinkPickerState ?: return
+        val trimmedQuery = searchResult.query.trim()
+        val items = searchResult.targets
+            .map { OrgRoamLinkTargetsAdapter.Item.Target(it) }
+            .toMutableList<OrgRoamLinkTargetsAdapter.Item>()
+
+        if (trimmedQuery.isNotEmpty() && searchResult.targets.none { it.title.equals(trimmedQuery, ignoreCase = true) }) {
+            items.add(
+                0,
+                OrgRoamLinkTargetsAdapter.Item.Create(
+                    title = trimmedQuery,
+                    bookName = currentBookName(),
+                ),
+            )
+        }
+
+        state.adapter.submitList(items)
+        state.empty.goneUnless(items.isEmpty())
+    }
+
+    private fun insertOrgRoamLink(target: OrgRoamLinkTarget) {
+        val pending = pendingOrgRoamLinkInsertion
+        val id = target.id
+        if (pending == null || id.isNullOrBlank()) {
+            activity?.showSnackbar(R.string.org_roam_link_picker_editor_unavailable)
+            pendingOrgRoamLinkInsertion = null
+            return
+        }
+
+        val editor = editorForPendingOrgRoamLinkInsertion(pending)
+        if (editor == null) {
+            activity?.showSnackbar(R.string.org_roam_link_picker_editor_unavailable)
+            pendingOrgRoamLinkInsertion = null
+            return
+        }
+
+        editor.restoreSelection(pending.selection.start, pending.selection.end)
+
+        val selection = EditorSelection(editor.currentSelectionStart(), editor.currentSelectionEnd())
+        val text = editor.getSourceText()?.toString().orEmpty()
+        val result = EditorToolbarActions.orgIdLink(text, selection, id, target.title)
+        editor.applyEdit(result.text, result.selection.start, result.selection.end)
+
+        pendingOrgRoamLinkInsertion = null
+        updateEditorToolbar()
+    }
+
+    private fun editorForPendingOrgRoamLinkInsertion(pending: PendingOrgRoamLinkInsertion): RichText? {
+        return when (pending.editor) {
+            PendingOrgRoamLinkInsertion.Editor.TITLE -> binding.title.takeIf { it.isAttachedToWindow }
+            PendingOrgRoamLinkInsertion.Editor.CONTENT -> binding.content.takeIf { it.isAttachedToWindow }
+        }
+    }
+
+    private fun currentBookName(): String {
+        return viewModel.bookView.value?.book?.let(BookUtils::getFragmentTitleForBook)
+            ?: binding.locationButton.text?.toString().orEmpty()
     }
 
     private fun launchPropertyTimestampDialog() {
@@ -674,6 +851,14 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         viewModel.snackBarMessage.observeSingle(viewLifecycleOwner) { resId ->
             activity?.showSnackbar(resId)
         }
+
+        viewModel.orgRoamLinkTargetsEvent.observe(viewLifecycleOwner, Observer { searchResult ->
+            updateOrgRoamLinkPicker(searchResult)
+        })
+
+        viewModel.orgRoamLinkTargetReadyEvent.observe(viewLifecycleOwner, Observer { target ->
+            insertOrgRoamLink(target)
+        })
     }
 
     private fun updateViewsFromPayload() {
@@ -923,6 +1108,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
         dialog?.dismiss()
         dialog = null
+        orgRoamLinkPickerState = null
 
         ActivityUtils.keepScreenOnClear(activity)
     }
@@ -1442,6 +1628,23 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     private data class DialogAction(
         val labelRes: Int,
         val action: () -> Unit,
+    )
+
+    private data class PendingOrgRoamLinkInsertion(
+        val editor: Editor,
+        val selection: EditorSelection,
+    ) {
+        enum class Editor {
+            TITLE,
+            CONTENT,
+        }
+    }
+
+    private data class OrgRoamLinkPickerState(
+        val search: TextInputEditText,
+        val includeWithoutIds: MaterialCheckBox,
+        val empty: TextView,
+        val adapter: OrgRoamLinkTargetsAdapter,
     )
 
     private enum class ToolbarAction(val contentOnly: Boolean) {

@@ -1,5 +1,7 @@
 package com.orgzly.android.ui.note
 
+import com.orgzly.android.link.OrgRoamLinkFormatter
+
 data class EditorSelection(
     val start: Int,
     val end: Int,
@@ -45,6 +47,17 @@ object EditorToolbarActions {
                 EditorSelection(selection.start + 2, selection.end + 2),
             )
         }
+    }
+
+    fun orgIdLink(text: String, selection: EditorSelection, id: String, description: String): EditorEditResult {
+        val link = OrgRoamLinkFormatter.format(id, description)
+        val caret = selection.start + link.length
+        return replace(
+            text,
+            selection,
+            link,
+            EditorSelection(caret, caret),
+        )
     }
 
     fun bulletList(text: String, selection: EditorSelection): EditorEditResult {

@@ -9,6 +9,7 @@
     <string name="editor_toolbar_bold">Bold</string>
     <string name="editor_toolbar_italic">Italic</string>
     <string name="editor_toolbar_link">Link</string>
+    <string name="editor_toolbar_link_to_note">Link to note</string>
     <string name="editor_toolbar_bullet">Bullet list item</string>
     <string name="editor_toolbar_checkbox">Checkbox item</string>
     <string name="editor_toolbar_more">More insert actions</string>
@@ -102,6 +103,20 @@
     <string name="ssh_show_public_key_preference_title">View generated SSH public key</string>
     <string name="message_book_has_no_link">Notebook has no repository link</string>
     <string name="message_note_created">Note created</string>
+    <string name="org_roam_link_picker_title">Link to note</string>
+    <string name="org_roam_link_picker_search_hint">Search notes, notebooks, IDs, aliases</string>
+    <string name="org_roam_link_picker_include_without_ids">Include notes without an ID</string>
+    <string name="org_roam_link_picker_no_results">No matching notes or notebooks</string>
+    <string name="org_roam_link_picker_target_subtitle">%1$s • %2$s</string>
+    <string name="org_roam_link_picker_id_status">ID: %s</string>
+    <string name="org_roam_link_picker_requires_id_status">Adds an ID before inserting the link</string>
+    <string name="org_roam_link_picker_duplicate_id_status">Duplicate ID: %s</string>
+    <string name="org_roam_link_picker_duplicate_id_error">This ID is duplicated. Fix the duplicates before linking to it.</string>
+    <string name="org_roam_link_picker_add_id_confirmation">Add an ID to “%1$s” before inserting the link?</string>
+    <string name="org_roam_link_picker_create_new">Create linked note “%s”</string>
+    <string name="org_roam_link_picker_create_in_notebook">Create in %s</string>
+    <string name="org_roam_link_picker_create_status">Creates a new note with an ID, then inserts the link</string>
+    <string name="org_roam_link_picker_editor_unavailable">The original editor is no longer available.</string>
     <string name="drawer_close">Close drawer</string>
     <string name="drawer_open">Open drawer</string>
 

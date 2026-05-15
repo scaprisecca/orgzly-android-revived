@@ -26,9 +26,12 @@ import com.orgzly.android.db.NotesClipboard
 import com.orgzly.android.db.OrgzlyDatabase
 import com.orgzly.android.db.dao.NoteDao
 import com.orgzly.android.db.dao.NoteDao.NoteIdBookId
+import com.orgzly.android.db.entity.BookProperty
 import com.orgzly.android.db.dao.NoteViewDao
 import com.orgzly.android.db.dao.ReminderTimeDao
 import com.orgzly.android.db.entity.*
+import com.orgzly.android.link.OrgRoamIds
+import com.orgzly.android.link.OrgRoamLinkTarget
 import com.orgzly.android.db.mappers.OrgTimestampMapper
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.query.Query
@@ -43,6 +46,7 @@ import com.orgzly.android.ui.NotePlace
 import com.orgzly.android.ui.Place
 import com.orgzly.android.ui.note.NoteBuilder
 import com.orgzly.android.ui.note.NotePayload
+import com.orgzly.android.ui.views.style.IdLinkSpan
 import com.orgzly.android.usecase.RepoCreate
 import com.orgzly.android.util.*
 import com.orgzly.org.OrgActiveTimestamps
@@ -1422,6 +1426,23 @@ class DataRepository @Inject constructor(
         createNote(notePayload, NotePlace(book.book.id))
     }
 
+    fun createLinkedNoteTarget(bookId: Long, title: String): OrgRoamLinkTarget {
+        val notePayload = NoteBuilder.newPayload(context, title, "").also {
+            it.properties.put(IdLinkSpan.PROPERTY, OrgRoamIds.newId())
+        }
+        val note = createNote(notePayload, NotePlace(bookId))
+        val book = getBookOrThrow(bookId)
+
+        return OrgRoamLinkTarget(
+            type = OrgRoamLinkTarget.Type.NOTE,
+            id = notePayload.properties[IdLinkSpan.PROPERTY],
+            noteId = note.id,
+            bookId = bookId,
+            title = note.title,
+            bookName = book.name,
+        )
+    }
+
     /**
      * Creates new note adding created-at time to it.
      */
@@ -2126,6 +2147,91 @@ class DataRepository @Inject constructor(
         return db.note().allNotesHavingPropertyLowerCase(name.lowercase(), value.lowercase())
     }
 
+    fun ensureNoteId(noteId: Long): String {
+        val note = db.note().get(noteId) ?: throw IOException("Target note not found")
+        val existing = db.noteProperty().get(noteId, IdLinkSpan.PROPERTY).firstOrNull()?.value
+        if (!existing.isNullOrBlank()) {
+            return existing
+        }
+
+        val id = OrgRoamIds.newId()
+        db.runInTransaction(Callable {
+            db.noteProperty().upsert(noteId, IdLinkSpan.PROPERTY, id)
+            updateBookIsModified(note.position.bookId, true)
+        })
+        return id
+    }
+
+    fun searchOrgRoamLinkTargets(query: String, includeWithoutIds: Boolean): List<OrgRoamLinkTarget> {
+        val trimmedQuery = query.trim()
+        val noteProperties = db.noteProperty().getAll().groupBy { it.noteId }
+        val bookProperties = db.bookProperty().getAll().groupBy { it.bookId }
+        val booksById = getBooks().associate { it.book.id to it.book }
+
+        val targets = mutableListOf<OrgRoamLinkTarget>()
+
+        db.note().getAll().forEach { note ->
+            val properties = noteProperties[note.id].orEmpty()
+            val id = properties.firstValue(IdLinkSpan.PROPERTY)
+            if (id == null && !includeWithoutIds) {
+                return@forEach
+            }
+
+            val book = booksById[note.position.bookId] ?: return@forEach
+            val target = OrgRoamLinkTarget(
+                type = OrgRoamLinkTarget.Type.NOTE,
+                id = id,
+                noteId = note.id,
+                bookId = note.position.bookId,
+                title = note.title,
+                bookName = book.name,
+                customId = properties.firstValue("CUSTOM_ID"),
+                roamAliases = properties.firstValue("ROAM_ALIASES"),
+                requiresIdCreation = id == null,
+            )
+
+            if (matchesOrgRoamTarget(target, trimmedQuery, book.title)) {
+                targets.add(target)
+            }
+        }
+
+        booksById.values.forEach { book ->
+            val properties = bookProperties[book.id].orEmpty()
+            val id = properties.firstValue(IdLinkSpan.PROPERTY) ?: return@forEach
+            val title = book.title ?: book.name
+            val target = OrgRoamLinkTarget(
+                type = OrgRoamLinkTarget.Type.BOOK,
+                id = id,
+                bookId = book.id,
+                title = title,
+                bookName = book.name,
+                customId = properties.firstValue("CUSTOM_ID"),
+                roamAliases = properties.firstValue("ROAM_ALIASES"),
+            )
+
+            if (matchesOrgRoamTarget(target, trimmedQuery, book.title)) {
+                targets.add(target)
+            }
+        }
+
+        val duplicateCounts = targets
+            .mapNotNull { it.id }
+            .groupingBy { it.lowercase() }
+            .eachCount()
+
+        return targets
+            .map { target ->
+                target.copy(
+                    duplicateIdCount = target.id?.let { duplicateCounts[it.lowercase()] } ?: 0,
+                )
+            }
+            .sortedWith(
+                compareByDescending<OrgRoamLinkTarget> { !it.requiresIdCreation }
+                    .thenBy { it.title.lowercase() }
+                    .thenBy { it.bookName.lowercase() },
+            )
+    }
+
     fun findNotesOrBooksHavingProperty(name: String, value: String): List<Any?> {
         val foundNote = findNotesHavingProperty(name, value)
         if (foundNote.isNotEmpty())
@@ -2166,6 +2272,42 @@ class DataRepository @Inject constructor(
         val finalJsonString = Gson().toJson(finalMap)
         updateNoteContent(targetNote!!.noteId, finalJsonString)
         AppPreferences.settingsExportAndImportNoteId(context, noteIdPropertyValue)
+    }
+
+    private fun List<out Any>.firstValue(name: String): String? {
+        return when (val property = firstOrNull {
+            when (it) {
+                is NoteProperty -> it.name.equals(name, ignoreCase = true)
+                is BookProperty -> it.name.equals(name, ignoreCase = true)
+                else -> false
+            }
+        }) {
+            is NoteProperty -> property.value
+            is BookProperty -> property.value
+            else -> null
+        }
+    }
+
+    private fun matchesOrgRoamTarget(
+        target: OrgRoamLinkTarget,
+        query: String,
+        bookTitle: String? = null,
+    ): Boolean {
+        if (query.isBlank()) {
+            return true
+        }
+
+        val loweredQuery = query.lowercase()
+        val fields = listOfNotNull(
+            target.title,
+            target.bookName,
+            bookTitle,
+            target.id,
+            target.customId,
+            target.roamAliases,
+        )
+
+        return fields.any { it.lowercase().contains(loweredQuery) }
     }
 
     fun importSettingsAndSearchesFromNote(note: Note) {

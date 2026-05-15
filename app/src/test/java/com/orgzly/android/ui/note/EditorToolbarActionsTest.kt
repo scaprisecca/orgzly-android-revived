@@ -30,6 +30,22 @@ class EditorToolbarActionsTest {
     }
 
     @Test
+    fun orgIdLinkReplacesSelectionWithCompletedLink() {
+        val result = EditorToolbarActions.orgIdLink("abc", EditorSelection(1, 2), "123", "Target")
+
+        assertThat(result.text, equalTo("a[[id:123][Target]]c"))
+        assertThat(result.selection, equalTo(EditorSelection(19, 19)))
+    }
+
+    @Test
+    fun orgIdLinkNormalizesDescriptionBeforeInsertion() {
+        val result = EditorToolbarActions.orgIdLink("", EditorSelection(0, 0), "123", "Target ]\n Name")
+
+        assertThat(result.text, equalTo("[[id:123][Target ) Name]]"))
+        assertThat(result.selection, equalTo(EditorSelection(25, 25)))
+    }
+
+    @Test
     fun checkboxTransformsCurrentLine() {
         val result = EditorToolbarActions.checkboxList("task", EditorSelection(0, 0))
 

@@ -258,6 +258,19 @@ class RichText(context: Context, attrs: AttributeSet?) :
         }
     }
 
+    fun restoreSelection(selectionStart: Int, selectionEnd: Int) {
+        val textLength = richTextEdit.text?.length ?: 0
+        val boundedStart = selectionStart.coerceIn(0, textLength)
+        val boundedEnd = selectionEnd.coerceIn(boundedStart, textLength)
+
+        if (!richTextEdit.isVisible) {
+            toEditMode(boundedStart)
+        }
+
+        richTextEdit.setSelection(boundedStart, boundedEnd)
+        richTextEdit.requestFocusAndOpenKeyboard()
+    }
+
     fun isBeingEdited(): Boolean {
         return this.richTextEdit.isVisible
     }
