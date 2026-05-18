@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added property name autocomplete in the note editor, using existing property names from other notes with fuzzy matching.
 - Added a mobile-first capture template system for faster note creation, with built-in templates, notebook routing, in-app picker entry points, and share-flow integration.
 - Added a mobile note editor toolbar for faster Org editing on Android, including one-tap bold, italic, link, bullet, checkbox, timestamp, and More actions.
+- Added content-only indent and decrease-indent buttons to the mobile note editor toolbar for nesting bullet points while editing note body text.
 - Added secondary insert actions for headings, TODO state items, numbered lists, code/verbatim text, property drawers, property lines, and scheduled, deadline, inline, and recurring timestamps.
 - Added a note editor refile action so notes can be moved to another notebook or under a heading without leaving the editor, including support for placing brand-new notes before first save.
 - Added a side-by-side `Orgzly Revived Dev` app variant and helper build scripts so local test builds can coexist with the installed store or F-Droid app.

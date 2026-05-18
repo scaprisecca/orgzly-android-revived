@@ -38,6 +38,30 @@ class EditorToolbarActionsTest {
     }
 
     @Test
+    fun indentTransformsEverySelectedLine() {
+        val result = EditorToolbarActions.indent("- one\n- two\n- three", EditorSelection(2, 9))
+
+        assertThat(result.text, equalTo("  - one\n  - two\n- three"))
+        assertThat(result.selection, equalTo(EditorSelection(4, 17)))
+    }
+
+    @Test
+    fun deindentTransformsEverySelectedLine() {
+        val result = EditorToolbarActions.deindent("  - one\n  - two\n- three", EditorSelection(4, 15))
+
+        assertThat(result.text, equalTo("- one\n- two\n- three"))
+        assertThat(result.selection, equalTo(EditorSelection(2, 11)))
+    }
+
+    @Test
+    fun deindentCurrentLineKeepsCursorWhenLineIsAlreadyTopLevel() {
+        val result = EditorToolbarActions.deindent("- one", EditorSelection(3, 3))
+
+        assertThat(result.text, equalTo("- one"))
+        assertThat(result.selection, equalTo(EditorSelection(3, 3)))
+    }
+
+    @Test
     fun bulletTransformsEverySelectedLine() {
         val result = EditorToolbarActions.bulletList("one\ntwo\nthree", EditorSelection(1, 7))
 
