@@ -7,11 +7,12 @@ import com.orgzly.android.data.DataRepository
 class RefileViewModelFactory(
         private val dataRepository: DataRepository,
         private val noteIds: Set<Long>,
-        private val count: Int) : ViewModelProvider.Factory {
+        private val count: Int,
+        private val isTargetSelectionMode: Boolean) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
-        return RefileViewModel(dataRepository, noteIds, count) as T
+        return RefileViewModel(dataRepository, noteIds, count, isTargetSelectionMode) as T
     }
 
     companion object {
@@ -20,7 +21,11 @@ class RefileViewModelFactory(
                 noteIds: Set<Long>,
                 count: Int): ViewModelProvider.Factory {
 
-            return RefileViewModelFactory(dataRepository, noteIds, count)
+            return RefileViewModelFactory(dataRepository, noteIds, count, false)
+        }
+
+        fun forTargetSelection(dataRepository: DataRepository): ViewModelProvider.Factory {
+            return RefileViewModelFactory(dataRepository, emptySet(), 0, true)
         }
     }
 }

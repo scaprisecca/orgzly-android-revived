@@ -21,7 +21,8 @@ import java.util.*
 class RefileViewModel(
         val dataRepository: DataRepository,
         val noteIds: Set<Long>,
-        val count: Int) : CommonViewModel() {
+        val count: Int,
+        private val isTargetSelectionMode: Boolean) : CommonViewModel() {
 
     class Home
     class Parent
@@ -33,6 +34,7 @@ class RefileViewModel(
     val data = MutableLiveData<Pair<Stack<Item>, List<Item>>>()
 
     val refiledEvent: SingleLiveEvent<UseCaseResult> = SingleLiveEvent()
+    val targetSelectedEvent: SingleLiveEvent<NotePlace> = SingleLiveEvent()
 
     fun openForTheFirstTime() {
         val location = AppPreferences.refileLastLocation(App.getAppContext()).let {
@@ -136,6 +138,11 @@ class RefileViewModel(
     }
 
     fun refile(notePlace: NotePlace) {
+        if (isTargetSelectionMode) {
+            targetSelectedEvent.postValue(notePlace)
+            return
+        }
+
         App.EXECUTORS.diskIO().execute {
             catchAndPostError {
                 val useCase = NoteRefile(noteIds, notePlace)

@@ -21,6 +21,7 @@ import com.orgzly.android.usecase.BookScrollToNote
 import com.orgzly.android.usecase.BookSparseTreeForNote
 import com.orgzly.android.usecase.NoteCreate
 import com.orgzly.android.usecase.NoteDelete
+import com.orgzly.android.usecase.NoteRefile
 import com.orgzly.android.usecase.NoteUpdate
 import com.orgzly.android.usecase.UseCaseRunner
 import com.orgzly.android.util.MiscUtils
@@ -64,8 +65,10 @@ class NoteViewModel(
 
     val noteDeleteRequest: SingleLiveEvent<Int> = SingleLiveEvent()
     val bookChangeRequestEvent: SingleLiveEvent<List<BookView>> = SingleLiveEvent()
+    val noteRefiledEvent: SingleLiveEvent<Note> = SingleLiveEvent()
 
     var notePayload: NotePayload? = null
+    private var createNotePlaceOverride: NotePlace? = null
 
     val propertyNames = MutableLiveData<List<String>>()
 
@@ -175,25 +178,34 @@ class NoteViewModel(
         notePayload = notePayload?.copy(closed = range?.toString())
     }
 
-    private fun createNote(postSave: ((note: Note) -> Unit)?) {
-        val notePlace = if (place != Place.UNSPECIFIED)
+    private fun defaultCreateNotePlace(): NotePlace {
+        return if (place != Place.UNSPECIFIED) {
             NotePlace(bookId, noteId, place)
-        else
+        } else {
             NotePlace(bookId)
+        }
+    }
+
+    private fun createNote(postSave: ((note: Note) -> Unit)?) {
+        val notePlace = createNotePlaceOverride ?: defaultCreateNotePlace()
 
         notePayload?.let { payload ->
             App.EXECUTORS.diskIO().execute {
                 catchAndPostError {
-                    val result = UseCaseRunner.run(NoteCreate(payload, notePlace))
-                    val note = result.userData as Note
+                    try {
+                        val result = UseCaseRunner.run(NoteCreate(payload, notePlace))
+                        val note = result.userData as Note
 
-                    // Update note ID after creating note
-                    noteId = note.id
+                        // Update note ID after creating note
+                        noteId = note.id
 
-                    if (postSave != null) {
-                        postSave(note)
-                    } else {
-                        noteCreatedEvent.postValue(note)
+                        if (postSave != null) {
+                            postSave(note)
+                        } else {
+                            noteCreatedEvent.postValue(note)
+                        }
+                    } finally {
+                        createNotePlaceOverride = null
                     }
                 }
             }
@@ -305,6 +317,34 @@ class NoteViewModel(
             false
         } else {
             true
+        }
+    }
+
+    fun saveNewNoteAt(notePlace: NotePlace, postSave: ((note: Note) -> Unit)? = null) {
+        createNotePlaceOverride = notePlace
+        if (isBookSet() && isTitleValid()) {
+            createNote(postSave)
+        } else {
+            createNotePlaceOverride = null
+        }
+    }
+
+    fun refileCurrentNote(target: NotePlace, postRefile: (() -> Unit)? = null) {
+        App.EXECUTORS.diskIO().execute {
+            catchAndPostError {
+                UseCaseRunner.run(NoteRefile(setOf(noteId), target))
+
+                val note = dataRepository.getNote(noteId)
+                    ?: throw IllegalStateException("Note not found after refile")
+
+                if (postRefile != null) {
+                    App.EXECUTORS.mainThread().execute {
+                        postRefile()
+                    }
+                } else {
+                    noteRefiledEvent.postValue(note)
+                }
+            }
         }
     }
 

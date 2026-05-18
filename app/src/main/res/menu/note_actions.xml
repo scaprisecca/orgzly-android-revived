@@ -5,6 +5,12 @@
     tools:ignore="AlwaysShowAction">
 
     <item
+        android:id="@+id/refile"
+        android:title="@string/refile"
+        android:icon="@drawable/ic_move_to_inbox"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/done"
         android:title="@string/done"
         android:icon="@drawable/ic_done"
