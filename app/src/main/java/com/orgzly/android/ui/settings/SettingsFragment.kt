@@ -162,6 +162,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         updateRemindersScreen()
         updateWidgetScreen()
         setupCalendarSyncSearchPreference()
+        setupDoneArchiveBookPreference()
     }
 
     private fun setupCalendarSyncSearchPreference() {
@@ -187,6 +188,36 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
         pref.entries = entries.toTypedArray()
         pref.entryValues = entryValues.toTypedArray()
+    }
+
+    private fun setupDoneArchiveBookPreference() {
+        val pref = preference(R.string.pref_key_done_archive_book_id) as? ListPreference ?: return
+
+        val entries = ArrayList<CharSequence>()
+        val entryValues = ArrayList<CharSequence>()
+
+        entries.add(getString(R.string.not_set))
+        entryValues.add("")
+
+        try {
+            val books = dataRepository.getBooks()
+            for (book in books) {
+                entries.add(book.book.name)
+                entryValues.add(book.book.id.toString())
+            }
+        } catch (e: Exception) {
+            LogUtils.d(TAG, "Failed to load notebooks for done archive preference")
+        }
+
+        pref.entries = entries.toTypedArray()
+        pref.entryValues = entryValues.toTypedArray()
+        pref.summaryProvider = Preference.SummaryProvider<ListPreference> { preference ->
+            when {
+                preference.value.isNullOrEmpty() -> getString(R.string.not_set)
+                preference.entry != null -> preference.entry
+                else -> getString(R.string.done_tasks_destination_missing_summary, preference.value)
+            }
+        }
     }
 
     private fun setupVersionPreference() {
@@ -470,6 +501,10 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     // Update calendar color when preference changes
                     updateCalendarColorFromPreferences(requireContext())
                 }
+            }
+
+            getString(R.string.pref_key_done_archive_book_id) -> {
+                setupDoneArchiveBookPreference()
             }
         }
 

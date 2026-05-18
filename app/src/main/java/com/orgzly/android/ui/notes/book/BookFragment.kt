@@ -48,6 +48,9 @@ import com.orgzly.android.ui.util.ActivityUtils
 import com.orgzly.android.ui.util.setDecorFitsSystemWindowsForBottomToolbar
 import com.orgzly.android.ui.util.setup
 import com.orgzly.android.ui.util.styledAttributes
+import com.orgzly.android.ui.showSnackbar
+import com.orgzly.android.usecase.DoneArchiveResult
+import com.orgzly.android.usecase.NoteArchiveDone
 import com.orgzly.android.util.LogUtils
 import com.orgzly.android.util.SpaceTokenizer
 import com.orgzly.databinding.FragmentBookBinding
@@ -262,6 +265,21 @@ class BookFragment :
                     }
                     .setNegativeButton(R.string.cancel) { _, _ -> }
                     .show()
+        })
+
+        viewModel.archiveDoneEvent.observeSingle(viewLifecycleOwner, Observer { result ->
+            activity?.showSnackbar(doneArchiveMessage(result))
+        })
+
+        viewModel.errorEvent.observeSingle(viewLifecycleOwner, Observer { error ->
+            val message = when (error) {
+                is NoteArchiveDone.DestinationNotConfigured -> getString(R.string.done_archive_choose_destination_first)
+                is NoteArchiveDone.DestinationMissing -> getString(R.string.done_archive_destination_missing)
+                is NoteArchiveDone.DestinationIsSameBook -> getString(R.string.done_archive_same_book)
+                else -> (error.cause ?: error).localizedMessage
+            }
+
+            activity?.showSnackbar(message)
         })
 
         viewModel.appBar.mode.observeSingle(viewLifecycleOwner) { mode ->
@@ -819,7 +837,7 @@ class BookFragment :
 
     private fun hideMenuItemsBasedOnSelection(menu: Menu) {
         // Hide buttons that can't be used when multiple notes are selected
-        for (id in listOf(R.id.paste, R.id.new_note)) {
+        for (id in listOf(R.id.paste, R.id.new_note, R.id.archive_done_children)) {
             menu.findItem(id)?.isVisible = viewAdapter.getSelection().count == 1
         }
     }
@@ -947,6 +965,11 @@ class BookFragment :
 
             R.id.note_popup_narrow ->
                 viewModel.narrowToSubtree(ids.first())
+
+            R.id.archive_done_children -> {
+                viewModel.archiveDoneInHeading(ids.first())
+                viewModel.appBar.toMode(APP_BAR_DEFAULT_MODE)
+            }
         }
     }
 
@@ -964,6 +987,10 @@ class BookFragment :
 
             R.id.book_actions_paste -> {
                 pasteNotes(Place.UNDER, 0)
+            }
+
+            R.id.book_actions_move_done_tasks -> {
+                viewModel.archiveDoneInCurrentScope()
             }
 
             R.id.books_options_menu_book_preface -> {
@@ -986,6 +1013,44 @@ class BookFragment :
 
             R.id.activity_action_settings -> {
                 startActivity(Intent(context, SettingsActivity::class.java))
+            }
+        }
+    }
+
+    private fun doneArchiveMessage(result: DoneArchiveResult): String {
+        return when {
+            result.movedCount == 0 && result.skippedActiveDescendantCount == 0 -> {
+                getString(R.string.no_done_tasks_to_move)
+            }
+
+            result.movedCount == 0 && result.skippedActiveDescendantCount == 1 -> {
+                getString(R.string.no_done_tasks_moved_skipped_one)
+            }
+
+            result.movedCount == 0 -> {
+                getString(
+                    R.string.no_done_tasks_moved_skipped_other,
+                    result.skippedActiveDescendantCount
+                )
+            }
+
+            result.skippedActiveDescendantCount == 0 -> {
+                resources.getQuantityString(
+                    R.plurals.moved_done_tasks_to_done_list,
+                    result.movedCount,
+                    result.movedCount,
+                    result.destinationBookName
+                )
+            }
+
+            else -> {
+                resources.getQuantityString(
+                    R.plurals.moved_done_tasks_to_done_list_with_skipped,
+                    result.movedCount,
+                    result.movedCount,
+                    result.destinationBookName,
+                    result.skippedActiveDescendantCount
+                )
             }
         }
     }

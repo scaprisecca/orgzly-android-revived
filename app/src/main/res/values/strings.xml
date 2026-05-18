@@ -506,6 +506,26 @@
 
     <string name="default_notebook">Default notebook</string>
     <string name="default_notebook_desc">Notebook used when sharing to Orgzly or creating a new note from the ongoing notification</string>
+    <string name="done_tasks_destination">Done tasks destination</string>
+    <string name="done_tasks_destination_summary">Notebook used by the done-task archive actions</string>
+    <string name="not_set">Not set</string>
+    <string name="done_tasks_destination_missing_summary">Missing notebook (ID: %1$s)</string>
+    <string name="move_done_tasks_to_done_list">Move done tasks to done list</string>
+    <string name="move_done_tasks_in_this_heading">Move done tasks in this heading</string>
+    <string name="no_done_tasks_to_move">No done tasks to move</string>
+    <string name="done_archive_choose_destination_first">Choose a done list in Settings > Notebooks first</string>
+    <string name="done_archive_destination_missing">Done list no longer exists. Choose another in Settings > Notebooks</string>
+    <string name="done_archive_same_book">Done list must be different from the current notebook</string>
+    <string name="no_done_tasks_moved_skipped_one">No done tasks moved; skipped 1 with active subtasks</string>
+    <string name="no_done_tasks_moved_skipped_other">No done tasks moved; skipped %1$d with active subtasks</string>
+    <plurals name="moved_done_tasks_to_done_list">
+        <item quantity="one">Moved %1$d done task to %2$s</item>
+        <item quantity="other">Moved %1$d done tasks to %2$s</item>
+    </plurals>
+    <plurals name="moved_done_tasks_to_done_list_with_skipped">
+        <item quantity="one">Moved %1$d done task to %2$s; skipped %3$d with active subtasks</item>
+        <item quantity="other">Moved %1$d done tasks to %2$s; skipped %3$d with active subtasks</item>
+    </plurals>
 
     <string name="force_utf8">Force UTF-8 encoding</string>
     <string name="force_utf8_summary">Do not try to detect encoding, always use UTF-8</string>

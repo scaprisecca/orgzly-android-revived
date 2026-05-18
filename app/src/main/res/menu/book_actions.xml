@@ -46,6 +46,11 @@
         android:title="@string/paste"/>
 
     <item
+        android:id="@+id/book_actions_move_done_tasks"
+        app:showAsAction="never"
+        android:title="@string/move_done_tasks_to_done_list"/>
+
+    <item
         android:id="@+id/sync"
         app:showAsAction="never"
         android:title="@string/sync"/>

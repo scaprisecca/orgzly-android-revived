@@ -79,6 +79,11 @@
         android:title="@string/share"/>
 
     <item
+        android:id="@+id/archive_done_children"
+        app:showAsAction="never"
+        android:title="@string/move_done_tasks_in_this_heading"/>
+
+    <item
         android:id="@+id/delete_note"
         app:showAsAction="never"
         android:title="@string/delete"/>

@@ -34,6 +34,12 @@
             android:defaultValue="@string/default_share_notebook"
             app:useSimpleSummaryProvider="true"/>
 
+        <ListPreference
+            android:key="@string/pref_key_done_archive_book_id"
+            android:title="@string/done_tasks_destination"
+            android:dialogTitle="@string/done_tasks_destination"
+            android:defaultValue="@string/pref_default_done_archive_book_id" />
+
         <PreferenceCategory android:title="@string/capture_templates">
             <Preference
                 android:key="@string/pref_key_manage_capture_templates"
