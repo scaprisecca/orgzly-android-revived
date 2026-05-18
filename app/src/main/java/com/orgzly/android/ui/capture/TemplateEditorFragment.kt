@@ -48,6 +48,7 @@ class TemplateEditorFragment : androidx.fragment.app.Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupNotebookDropdown()
+        setupTagsAutocomplete()
         binding.save.setOnClickListener { saveTemplate() }
         binding.delete.setOnClickListener { confirmDelete() }
     }
@@ -84,6 +85,41 @@ class TemplateEditorFragment : androidx.fragment.app.Fragment() {
             notebookEntries,
         )
         binding.targetNotebook.setAdapter(adapter)
+    }
+
+    private fun setupTagsAutocomplete() {
+        val adapter = CaptureTemplateTagSuggestionAdapter(
+            requireContext(),
+            R.layout.dropdown_item,
+        )
+
+        binding.tagsInput.setAdapter(adapter)
+        binding.tagsInput.setTokenizer(CaptureTemplateTagInput.tokenizer)
+        binding.tagsInput.threshold = 1
+
+        dataRepository.selectAllTagsLiveData().observe(viewLifecycleOwner) { tags ->
+            adapter.updateDictionary(tags)
+        }
+
+        binding.tagsInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && currentTagToken().isEmpty()) {
+                binding.tagsInput.showDropDown()
+            }
+        }
+
+        binding.tagsInput.setOnClickListener {
+            if (currentTagToken().isEmpty()) {
+                binding.tagsInput.showDropDown()
+            }
+        }
+    }
+
+    private fun currentTagToken(): String {
+        val text = binding.tagsInput.text ?: return ""
+        val cursor = binding.tagsInput.selectionStart.takeIf { it >= 0 } ?: text.length
+        val start = CaptureTemplateTagInput.tokenizer.findTokenStart(text, cursor)
+        val end = CaptureTemplateTagInput.tokenizer.findTokenEnd(text, cursor)
+        return text.subSequence(start, end).toString().trim()
     }
 
     private fun loadTemplate() {
@@ -179,7 +215,7 @@ class TemplateEditorFragment : androidx.fragment.app.Fragment() {
             titleTemplate = binding.titleTemplateInput.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             bodyTemplate = binding.bodyTemplateInput.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             defaultState = binding.defaultStateInput.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
-            tagsCsv = binding.tagsInput.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
+            tagsCsv = CaptureTemplateTagInput.normalizeTagsCsv(binding.tagsInput.text?.toString()),
             templateKind = baseTemplate?.templateKind
                 ?: sourceTemplate?.templateKind
                 ?: CaptureTemplateEntity.TEMPLATE_KIND_NOTE,
