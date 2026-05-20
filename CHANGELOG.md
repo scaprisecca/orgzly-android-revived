@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a configurable done-list destination and bulk actions to move completed tasks into it from the current notebook or a selected heading.
 
 ### Fixed
+- Fixed app settings export/import so it preserves capture templates, guided saved-search metadata, and portable notebook/search selections for new-device setup.
 - Clarified guided saved-search property filter help text so users know exact matches require both the property name and value, for example `client=acme` or `client: acme`.
 - Fixed a crash after using the mobile timestamp toolbar while editing property values.
 - Fixed the note editor so the mobile timestamp toolbar can be used while editing property values, allowing inline Org timestamps to be inserted directly into metadata fields.

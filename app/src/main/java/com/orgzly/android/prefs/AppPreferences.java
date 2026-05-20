@@ -562,6 +562,13 @@ public class AppPreferences {
                 context.getResources().getString(R.string.pref_default_calendar_sync_search)));
     }
 
+    public static void calendarSyncSearchId(Context context, long value) {
+        String key = context.getResources().getString(R.string.pref_key_calendar_sync_search);
+        getDefaultSharedPreferences(context).edit()
+                .putString(key, String.valueOf(value))
+                .apply();
+    }
+
     public static boolean ignoreSystemLocale(Context context) {
         return getDefaultSharedPreferences(context).getBoolean(
                 context.getResources().getString(R.string.pref_key_ignore_system_locale),

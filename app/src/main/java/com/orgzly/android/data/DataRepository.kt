@@ -16,6 +16,9 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.sqlite.db.SupportSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQueryBuilder
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.google.gson.JsonSyntaxException
 import com.orgzly.BuildConfig
@@ -2154,17 +2157,16 @@ class DataRepository @Inject constructor(
         }
         // Ensure that the note's "ID" property value is unique
         val targetNote = findUniqueNoteHavingProperty("ID", noteIdPropertyValue)
-        // Get settings as JSON
-        val settingsJsonObject = AppPreferences.getDefaultPrefsAsJsonObject(context)
-        // Get saved searches as JSON
-        val savedSearchesJsonObject = Gson().fromJson("{}", JsonObject::class.java)
-        getSavedSearches().forEach {
-            savedSearchesJsonObject.addProperty(it.name, it.query)
+
+        val finalJsonObject = JsonObject().apply {
+            addProperty("version", SETTINGS_EXPORT_VERSION)
+            add("settings", AppPreferences.getDefaultPrefsAsJsonObject(context))
+            add("saved_searches", exportSavedSearchesJson())
+            add("capture_templates", exportCaptureTemplatesJson())
+            add("portable_settings", exportPortableSettingsJson())
         }
-        // Put them together
-        val finalMap = mapOf("settings" to settingsJsonObject, "saved_searches" to savedSearchesJsonObject)
-        val finalJsonString = Gson().toJson(finalMap)
-        updateNoteContent(targetNote!!.noteId, finalJsonString)
+
+        updateNoteContent(targetNote!!.noteId, Gson().toJson(finalJsonObject))
         AppPreferences.settingsExportAndImportNoteId(context, noteIdPropertyValue)
     }
 
@@ -2174,30 +2176,193 @@ class DataRepository @Inject constructor(
             context.getString(R.string.failed_to_get_note_payload))
         if (notePayload.content.isNullOrEmpty())
             throw RuntimeException(context.getString(R.string.note_has_no_content))
-        val gson: Map<*, *>
+        val json: JsonObject
         try {
-            gson = Gson().fromJson(notePayload.content, Map::class.java)
+            json = Gson().fromJson(notePayload.content, JsonObject::class.java)
         } catch (e: JsonSyntaxException) {
             throw RuntimeException(context.getString(R.string.note_does_not_contain_valid_json))
         }
-        if (!("settings" in gson.keys && "saved_searches" in gson.keys)) // Both keys must be present
+        if (!json.has("settings") || !json.has("saved_searches")) // Both keys must be present
             throw RuntimeException(context.getString(R.string.imported_json_is_missing_mandatory_fields))
-        val settings = gson["settings"] as Map<String, *>
-        if (settings.isNotEmpty()) {
+
+        val settingsElement = json.get("settings")
+        if (settingsElement != null && settingsElement.isJsonObject && settingsElement.asJsonObject.size() > 0) {
+            val settings = Gson().fromJson(settingsElement, Map::class.java) as Map<String, *>
             AppPreferences.setDefaultPrefsFromJsonMap(context, settings)
             importedSomething = true
         }
-        val savedSearches: List<SavedSearch> = (gson["saved_searches"] as Map<String, String>)
-            .entries
-            .mapIndexed { index, entry ->
-                SavedSearch(0, entry.key, entry.value, index + 1)
-            }
+
+        val savedSearches = importSavedSearchesJson(json.get("saved_searches"))
         if (savedSearches.isNotEmpty()) {
             replaceSavedSearches(savedSearches)
             importedSomething = true
         }
+
+        val captureTemplates = importCaptureTemplatesJson(json.get("capture_templates"))
+        if (captureTemplates.isNotEmpty()) {
+            captureTemplates.forEach { updateCaptureTemplate(it) }
+            importedSomething = true
+        }
+
+        if (json.has("portable_settings") && json.get("portable_settings").isJsonObject) {
+            importPortableSettings(json.getAsJsonObject("portable_settings"))
+        }
+
         if (!importedSomething)
             throw RuntimeException("Found no settings or saved searches to import.")
+    }
+
+    private fun exportSavedSearchesJson(): JsonArray {
+        return JsonArray().apply {
+            getSavedSearches().forEach { savedSearch ->
+                add(JsonObject().apply {
+                    addProperty("name", savedSearch.name)
+                    addProperty("query", savedSearch.query)
+                    addProperty("position", savedSearch.position)
+                    addNullableProperty("builder_metadata", savedSearch.builderMetadata)
+                    addNullableProperty("builder_metadata_version", savedSearch.builderMetadataVersion)
+                    addNullableProperty("preset_key", savedSearch.presetKey)
+                })
+            }
+        }
+    }
+
+    private fun exportCaptureTemplatesJson(): JsonArray {
+        return JsonArray().apply {
+            getCaptureTemplates().forEach { captureTemplate ->
+                add(JsonObject().apply {
+                    addProperty("id", captureTemplate.id)
+                    addProperty("name", captureTemplate.name)
+                    addProperty("source_type", captureTemplate.sourceType)
+                    addNullableProperty("preset_key", captureTemplate.presetKey)
+                    addProperty("enabled", captureTemplate.enabled)
+                    addProperty("share_enabled", captureTemplate.shareEnabled)
+                    addNullableProperty("target_notebook_name", captureTemplate.targetNotebookName)
+                    addNullableProperty("title_template", captureTemplate.titleTemplate)
+                    addNullableProperty("body_template", captureTemplate.bodyTemplate)
+                    addNullableProperty("default_state", captureTemplate.defaultState)
+                    addNullableProperty("tags_csv", captureTemplate.tagsCsv)
+                    addProperty("template_kind", captureTemplate.templateKind)
+                    addProperty("position", captureTemplate.position)
+                    addProperty("deleted", captureTemplate.deleted)
+                })
+            }
+        }
+    }
+
+    private fun exportPortableSettingsJson(): JsonObject {
+        return JsonObject().apply {
+            AppPreferences.doneArchiveBookId(context)?.let { bookId ->
+                db.book().get(bookId)?.let { book ->
+                    addProperty("done_archive_notebook_name", book.name)
+                }
+            }
+
+            val calendarSyncSearchId = AppPreferences.calendarSyncSearchId(context)
+            if (calendarSyncSearchId > 0) {
+                db.savedSearch().get(calendarSyncSearchId)?.let { search ->
+                    addProperty("calendar_sync_search_name", search.name)
+                    addProperty("calendar_sync_search_query", search.query)
+                    addNullableProperty("calendar_sync_search_preset_key", search.presetKey)
+                }
+            }
+        }
+    }
+
+    private fun importSavedSearchesJson(savedSearchesElement: JsonElement?): List<SavedSearch> {
+        if (savedSearchesElement == null || savedSearchesElement.isJsonNull) {
+            return emptyList()
+        }
+
+        if (savedSearchesElement.isJsonObject) {
+            return savedSearchesElement.asJsonObject.entrySet().mapIndexed { index, entry ->
+                SavedSearch(0, entry.key, entry.value.asString, index + 1)
+            }
+        }
+
+        if (savedSearchesElement.isJsonArray) {
+            return savedSearchesElement.asJsonArray.mapIndexed { index, element ->
+                val savedSearch = element.asJsonObject
+                SavedSearch(
+                    0,
+                    savedSearch.getString("name") ?: "",
+                    savedSearch.getString("query") ?: "",
+                    savedSearch.getInt("position") ?: index + 1,
+                    savedSearch.getString("builder_metadata"),
+                    savedSearch.getInt("builder_metadata_version"),
+                    savedSearch.getString("preset_key")
+                )
+            }
+        }
+
+        return emptyList()
+    }
+
+    private fun importCaptureTemplatesJson(captureTemplatesElement: JsonElement?): List<CaptureTemplateEntity> {
+        if (captureTemplatesElement == null || !captureTemplatesElement.isJsonArray) {
+            return emptyList()
+        }
+
+        return captureTemplatesElement.asJsonArray.map { element ->
+            val captureTemplate = element.asJsonObject
+            CaptureTemplateEntity(
+                id = captureTemplate.getString("id") ?: UUID.randomUUID().toString(),
+                name = captureTemplate.getString("name") ?: "",
+                sourceType = captureTemplate.getString("source_type") ?: CaptureTemplateEntity.SOURCE_TYPE_CUSTOM,
+                presetKey = captureTemplate.getString("preset_key"),
+                enabled = captureTemplate.getBoolean("enabled") ?: true,
+                shareEnabled = captureTemplate.getBoolean("share_enabled") ?: true,
+                targetNotebookName = captureTemplate.getString("target_notebook_name"),
+                titleTemplate = captureTemplate.getString("title_template"),
+                bodyTemplate = captureTemplate.getString("body_template"),
+                defaultState = captureTemplate.getString("default_state"),
+                tagsCsv = captureTemplate.getString("tags_csv"),
+                templateKind = captureTemplate.getString("template_kind") ?: CaptureTemplateEntity.TEMPLATE_KIND_TASK,
+                position = captureTemplate.getInt("position") ?: (db.captureTemplate().getNextAvailablePosition() ?: 1),
+                deleted = captureTemplate.getBoolean("deleted") ?: false
+            )
+        }
+    }
+
+    private fun importPortableSettings(portableSettings: JsonObject) {
+        portableSettings.getString("done_archive_notebook_name")?.let { notebookName ->
+            AppPreferences.doneArchiveBookId(context, db.book().get(notebookName)?.id)
+        }
+
+        val searchName = portableSettings.getString("calendar_sync_search_name")
+        if (searchName != null) {
+            val presetKey = portableSettings.getString("calendar_sync_search_preset_key")
+            val query = portableSettings.getString("calendar_sync_search_query")
+            val search = when {
+                presetKey != null -> db.savedSearch().getByPresetKey(presetKey)
+                query != null -> db.savedSearch().getAllByExactNameAndQuery(searchName, query).firstOrNull()
+                else -> db.savedSearch().getAllByExactName(searchName).firstOrNull()
+            }
+            AppPreferences.calendarSyncSearchId(context, search?.id ?: -1)
+        }
+    }
+
+    private fun JsonObject.addNullableProperty(name: String, value: String?) {
+        if (value == null) add(name, JsonNull.INSTANCE) else addProperty(name, value)
+    }
+
+    private fun JsonObject.addNullableProperty(name: String, value: Number?) {
+        if (value == null) add(name, JsonNull.INSTANCE) else addProperty(name, value)
+    }
+
+    private fun JsonObject.getString(name: String): String? {
+        val value = get(name)
+        return if (value == null || value.isJsonNull) null else value.asString
+    }
+
+    private fun JsonObject.getInt(name: String): Int? {
+        val value = get(name)
+        return if (value == null || value.isJsonNull) null else value.asInt
+    }
+
+    private fun JsonObject.getBoolean(name: String): Boolean? {
+        val value = get(name)
+        return if (value == null || value.isJsonNull) null else value.asBoolean
     }
 
     /*
@@ -2632,6 +2797,8 @@ class DataRepository @Inject constructor(
 
     companion object {
         private val TAG = DataRepository::class.java.name
+
+        private const val SETTINGS_EXPORT_VERSION = 2
 
         const val GETTING_STARTED_NOTEBOOK_RESOURCE_ID = R.raw.orgzly_getting_started
     }

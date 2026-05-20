@@ -1,9 +1,15 @@
 package com.orgzly.android.data
 
+import androidx.preference.PreferenceManager
 import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.orgzly.R
 import com.orgzly.android.OrgzlyTest
+import com.orgzly.android.db.entity.CaptureTemplateEntity
+import com.orgzly.android.db.entity.SavedSearch
 import com.orgzly.android.prefs.AppPreferences
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -297,4 +303,113 @@ class DataRepositoryTest : OrgzlyTest() {
             )
         }
     }
+
+    @Test
+    fun testExportImportSettingsPreservesNewFeatureConfiguration() {
+        val doneBook = testUtils.setupBook("done", "")
+        AppPreferences.doneArchiveBookId(context, doneBook.book.id)
+
+        val savedSearch = SavedSearch(
+            0,
+            "Agenda Builder",
+            "todo state TODO",
+            1,
+            "{\"dateSource\":\"scheduled\",\"filters\":[\"home\"]}",
+            1,
+            "agenda-builder"
+        )
+        dataRepository.replaceSavedSearches(listOf(savedSearch))
+        val savedSearchId = dataRepository.getSavedSearches().single().id
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putString(context.getString(R.string.pref_key_calendar_sync_search), savedSearchId.toString())
+            .commit()
+
+        val captureTemplate = CaptureTemplateEntity(
+            id = "CUSTOM_EXPORT_TEST",
+            name = "Inbox task",
+            sourceType = CaptureTemplateEntity.SOURCE_TYPE_CUSTOM,
+            presetKey = null,
+            enabled = true,
+            shareEnabled = false,
+            targetNotebookName = "inbox",
+            titleTemplate = "TODO %title",
+            bodyTemplate = "%body\n%url",
+            defaultState = "TODO",
+            tagsCsv = "home,errand",
+            templateKind = CaptureTemplateEntity.TEMPLATE_KIND_TASK,
+            position = 7,
+            deleted = false
+        )
+        dataRepository.updateCaptureTemplate(captureTemplate)
+
+        val exportNote = exportSettingsNote()
+        dataRepository.exportSettingsAndSearchesToNote(exportNote)
+        val exportedJson = dataRepository.getNotes("settings-export").single().note.content!!
+        val exported = Gson().fromJson(exportedJson, JsonObject::class.java)
+        assertEquals(2, exported.get("version").asInt)
+        assertTrue(exported.getAsJsonArray("saved_searches").size() > 0)
+        assertTrue(exported.getAsJsonArray("capture_templates").size() > 0)
+        assertEquals("done", exported.getAsJsonObject("portable_settings").get("done_archive_notebook_name").asString)
+        assertEquals("Agenda Builder", exported.getAsJsonObject("portable_settings").get("calendar_sync_search_name").asString)
+
+        dataRepository.clearDatabase()
+        val importedDoneBook = testUtils.setupBook("done", "")
+        assertNotEquals(doneBook.book.id, importedDoneBook.book.id)
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putString(context.getString(R.string.pref_key_calendar_sync_search), "-1")
+            .commit()
+        AppPreferences.doneArchiveBookId(context, null)
+
+        val importNote = importSettingsNote(exportedJson)
+        dataRepository.importSettingsAndSearchesFromNote(importNote)
+
+        val importedSearch = dataRepository.getSavedSearches().single { it.name == "Agenda Builder" }
+        assertEquals("todo state TODO", importedSearch.query)
+        assertEquals("{\"dateSource\":\"scheduled\",\"filters\":[\"home\"]}", importedSearch.builderMetadata)
+        assertEquals(1, importedSearch.builderMetadataVersion)
+        assertEquals("agenda-builder", importedSearch.presetKey)
+        assertEquals(importedSearch.id, AppPreferences.calendarSyncSearchId(context))
+
+        val importedTemplate = dataRepository.getCaptureTemplate("CUSTOM_EXPORT_TEST")!!
+        assertEquals(captureTemplate.name, importedTemplate.name)
+        assertEquals(captureTemplate.enabled, importedTemplate.enabled)
+        assertEquals(captureTemplate.shareEnabled, importedTemplate.shareEnabled)
+        assertEquals(captureTemplate.targetNotebookName, importedTemplate.targetNotebookName)
+        assertEquals(captureTemplate.titleTemplate, importedTemplate.titleTemplate)
+        assertEquals(captureTemplate.bodyTemplate, importedTemplate.bodyTemplate)
+        assertEquals(captureTemplate.defaultState, importedTemplate.defaultState)
+        assertEquals(captureTemplate.tagsCsv, importedTemplate.tagsCsv)
+        assertEquals(captureTemplate.templateKind, importedTemplate.templateKind)
+        assertEquals(captureTemplate.position, importedTemplate.position)
+        assertEquals(captureTemplate.deleted, importedTemplate.deleted)
+
+        assertEquals(importedDoneBook.book.id, AppPreferences.doneArchiveBookId(context))
+    }
+
+    private fun exportSettingsNote() = noteInBook(
+        "settings-export",
+        "my-export-note",
+        "old content"
+    )
+
+    private fun importSettingsNote(content: String) = noteInBook(
+        "settings-import",
+        "my-import-note",
+        content
+    )
+
+    private fun noteInBook(bookName: String, noteId: String, content: String) = testUtils.setupBook(
+        bookName,
+        """
+            * Note 1
+            :PROPERTIES:
+            :ID: $noteId
+            :END:
+
+            $content
+
+       """.trimIndent()
+    ).let { dataRepository.getNotes(bookName)[0].note }
 }
