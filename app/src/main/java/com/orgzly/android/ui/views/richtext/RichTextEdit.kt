@@ -14,38 +14,58 @@ import com.orgzly.android.ui.util.KeyboardUtils
 import com.orgzly.android.util.LogUtils
 
 class RichTextEdit : AppCompatEditText {
+    enum class CursorRevealReason {
+        INITIAL_ACTIVATION,
+        FOLLOW_CURSOR,
+        PADDING_CHANGED,
+    }
+
+    private data class CursorRevealRequest(
+        val charOffset: Int,
+        val reason: CursorRevealReason,
+    )
+
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet?) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     private val userEditingTextWatcher: TextWatcher = RichTextEditWatcher()
-    private var pendingCursorVisibilityOffset: Int? = null
+    private var pendingCursorRevealRequest: CursorRevealRequest? = null
     private var cursorVisibilityScheduled = false
+    private var suspendCursorTracking = false
     private val ensureCursorVisibleRunnable = Runnable {
         cursorVisibilityScheduled = false
-        val charOffset = pendingCursorVisibilityOffset ?: currentSelectionStart()
-        pendingCursorVisibilityOffset = null
-        ensureCursorVisibleNow(charOffset)
+        val request = pendingCursorRevealRequest
+            ?: CursorRevealRequest(currentSelectionStart(), CursorRevealReason.FOLLOW_CURSOR)
+        pendingCursorRevealRequest = null
+        ensureCursorVisibleNow(request)
     }
 
     fun activate(charOffset: Int) {
         visibility = View.VISIBLE
+        addTextChangedListener(userEditingTextWatcher)
 
         // Position the cursor and open the keyboard
         if (charOffset in 0..(text?.length ?: 0)) {
+            suspendCursorTracking = true
             performClick()
             setSelection(charOffset)
 
             KeyboardUtils.openSoftKeyboard(this) {
-                ensureCursorVisible(charOffset)
+                suspendCursorTracking = false
+                ensureCursorVisible(charOffset, CursorRevealReason.INITIAL_ACTIVATION)
             }
+            postDelayed({
+                suspendCursorTracking = false
+            }, 500)
         }
-
-        addTextChangedListener(userEditingTextWatcher)
     }
 
-    fun ensureCursorVisible(charOffset: Int = currentSelectionStart()) {
-        pendingCursorVisibilityOffset = charOffset.coerceAtLeast(0)
+    fun ensureCursorVisible(
+        charOffset: Int = currentSelectionStart(),
+        reason: CursorRevealReason = CursorRevealReason.FOLLOW_CURSOR,
+    ) {
+        pendingCursorRevealRequest = CursorRevealRequest(charOffset.coerceAtLeast(0), reason)
 
         if (cursorVisibilityScheduled) {
             return
@@ -56,7 +76,7 @@ class RichTextEdit : AppCompatEditText {
     }
 
     // TODO: Handle closed drawers (and such)
-    private fun ensureCursorVisibleNow(charOffset: Int) {
+    private fun ensureCursorVisibleNow(request: CursorRevealRequest) {
         if (!hasFocus() || !isShown || !isLaidOut) {
             return
         }
@@ -64,7 +84,7 @@ class RichTextEdit : AppCompatEditText {
         val scrollView = ancestors.firstOrNull { view -> view is NestedScrollView } as? NestedScrollView
             ?: return
         val textLayout = layout ?: return
-        val boundedOffset = charOffset.coerceIn(0, text?.length ?: 0)
+        val boundedOffset = request.charOffset.coerceIn(0, text?.length ?: 0)
         val line = textLayout.getLineForOffset(boundedOffset)
         val lineHeight = textLayout.getLineBottom(line) - textLayout.getLineTop(line)
         val cursorRect = Rect(
@@ -78,8 +98,21 @@ class RichTextEdit : AppCompatEditText {
 
         val visibleTop = scrollView.scrollY
         val visibleBottom = visibleTop + scrollView.height - scrollView.paddingBottom
-        val topComfort = (lineHeight / 2).coerceAtLeast(0)
-        val bottomComfort = lineHeight.coerceAtLeast(0)
+        val viewportHeight = (visibleBottom - visibleTop).coerceAtLeast(0)
+        if (viewportHeight == 0) {
+            return
+        }
+        val useComfortPadding = request.reason == CursorRevealReason.FOLLOW_CURSOR
+        val topComfort = if (useComfortPadding) {
+            (lineHeight / 2).coerceAtLeast(0)
+        } else {
+            0
+        }
+        val bottomComfort = if (useComfortPadding) {
+            lineHeight.coerceAtLeast(0)
+        } else {
+            0
+        }
 
         val targetScrollY = when {
             cursorRect.top < visibleTop + topComfort -> {
@@ -87,7 +120,7 @@ class RichTextEdit : AppCompatEditText {
             }
 
             cursorRect.bottom > visibleBottom - bottomComfort -> {
-                (cursorRect.bottom - (scrollView.height - scrollView.paddingBottom) + bottomComfort)
+                (cursorRect.bottom - viewportHeight + bottomComfort)
                     .coerceAtLeast(0)
             }
 
@@ -99,7 +132,7 @@ class RichTextEdit : AppCompatEditText {
         }
 
         if (BuildConfig.LOG_DEBUG) {
-            LogUtils.d(TAG, targetScrollY)
+            LogUtils.d(TAG, request.reason, boundedOffset, targetScrollY)
         }
     }
 
@@ -107,7 +140,8 @@ class RichTextEdit : AppCompatEditText {
         removeTextChangedListener(userEditingTextWatcher)
         removeCallbacks(ensureCursorVisibleRunnable)
         cursorVisibilityScheduled = false
-        pendingCursorVisibilityOffset = null
+        pendingCursorRevealRequest = null
+        suspendCursorTracking = false
 
         visibility = View.GONE
     }
@@ -138,7 +172,7 @@ class RichTextEdit : AppCompatEditText {
     override fun onSelectionChanged(selStart: Int, selEnd: Int) {
         super.onSelectionChanged(selStart, selEnd)
 
-        if (hasFocus()) {
+        if (hasFocus() && !suspendCursorTracking) {
             ensureCursorVisible(selEnd.coerceAtLeast(selStart))
         }
     }
@@ -146,7 +180,7 @@ class RichTextEdit : AppCompatEditText {
     override fun onTextChanged(text: CharSequence?, start: Int, lengthBefore: Int, lengthAfter: Int) {
         super.onTextChanged(text, start, lengthBefore, lengthAfter)
 
-        if (hasFocus() && lengthAfter != 0) {
+        if (hasFocus() && !suspendCursorTracking && lengthAfter != 0) {
             ensureCursorVisible()
         }
     }

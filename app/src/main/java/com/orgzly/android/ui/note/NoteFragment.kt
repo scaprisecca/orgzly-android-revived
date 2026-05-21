@@ -81,6 +81,11 @@ import javax.inject.Inject
  * Note editor.
  */
 class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFragment.OnDateTimeSetListener, DrawerItem, RichText.OnModeChangeListener {
+    private enum class ActiveEditorRole {
+        TITLE,
+        CONTENT,
+        PROPERTY_VALUE,
+    }
 
     private lateinit var binding: FragmentNoteBinding
 
@@ -276,7 +281,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             val navigationInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             imeBottomInset = (imeInsets - navigationInsets).coerceAtLeast(0)
-            updateScrollBottomPadding()
+            updateEditorToolbar()
             windowInsets
         }
         ViewCompat.requestApplyInsets(binding.root)
@@ -309,7 +314,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         transientFocusViews.forEach { view ->
             view.setOnTouchListener { _, event ->
                 if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                    currentEditor()?.preserveEditModeOnNextFocusLoss()
+                    currentRichEditor()?.preserveEditModeOnNextFocusLoss()
                 }
                 false
             }
@@ -327,12 +332,13 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     }
 
     private fun updateEditorToolbar() {
-        val richEditorActive = currentEditor() != null
-        val propertyValueActive = !richEditorActive && currentPropertyValue() != null
-        val hasEditor = (richEditorActive || propertyValueActive) && binding.viewFlipper.displayedChild == 0
-        val contentEditorActive = binding.content.isBeingEdited()
+        val editorRole = activeEditorRole()
+        val propertyValueActive = editorRole == ActiveEditorRole.PROPERTY_VALUE
+        val hasEditor = editorRole != null && binding.viewFlipper.displayedChild == 0
+        val contentEditorActive = editorRole == ActiveEditorRole.CONTENT
 
         binding.editorToolbarContainer.goneUnless(hasEditor)
+        binding.editorToolbarContainer.translationY = if (hasEditor) -imeBottomInset.toFloat() else 0f
         binding.editorToolbarBold.isEnabled = hasEditor && !propertyValueActive
         binding.editorToolbarItalic.isEnabled = hasEditor && !propertyValueActive
         binding.editorToolbarLink.isEnabled = hasEditor && !propertyValueActive
@@ -372,14 +378,29 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             }
         }
 
-        currentEditor()?.ensureCursorVisible()
+        when (activeEditorRole()) {
+            ActiveEditorRole.CONTENT -> binding.content.ensureCursorVisible(
+                reason = com.orgzly.android.ui.views.richtext.RichTextEdit.CursorRevealReason.PADDING_CHANGED,
+            )
+            ActiveEditorRole.TITLE -> revealTitleEditor()
+            ActiveEditorRole.PROPERTY_VALUE, null -> Unit
+        }
     }
 
-    private fun currentEditor(): RichText? {
+    private fun activeEditorRole(): ActiveEditorRole? {
         return when {
-            binding.content.isBeingEdited() -> binding.content
-            binding.title.isBeingEdited() -> binding.title
+            binding.content.isBeingEdited() -> ActiveEditorRole.CONTENT
+            binding.title.isBeingEdited() -> ActiveEditorRole.TITLE
+            currentPropertyValue() != null -> ActiveEditorRole.PROPERTY_VALUE
             else -> null
+        }
+    }
+
+    private fun currentRichEditor(): RichText? {
+        return when (activeEditorRole()) {
+            ActiveEditorRole.CONTENT -> binding.content
+            ActiveEditorRole.TITLE -> binding.title
+            ActiveEditorRole.PROPERTY_VALUE, null -> null
         }
     }
 
@@ -387,12 +408,21 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         return activePropertyValue?.takeIf { it.isAttachedToWindow }
     }
 
+    private fun revealTitleEditor() {
+        binding.scrollView.post {
+            val titleTop = (binding.title.top - binding.scrollView.paddingTop).coerceAtLeast(0)
+            if (binding.scrollView.scrollY != titleTop) {
+                binding.scrollView.smoothScrollTo(0, titleTop)
+            }
+        }
+    }
+
     private fun isContentEditorActive(): Boolean {
-        return binding.content.isBeingEdited()
+        return activeEditorRole() == ActiveEditorRole.CONTENT
     }
 
     private fun applyEditorAction(action: ToolbarAction): Boolean {
-        val editor = currentEditor() ?: return false
+        val editor = currentRichEditor() ?: return false
         if (action.contentOnly && !isContentEditorActive()) {
             return false
         }
@@ -421,7 +451,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     }
 
     private fun showTimestampActions() {
-        if (currentEditor() == null && currentPropertyValue() != null) {
+        if (currentRichEditor() == null && currentPropertyValue() != null) {
             launchPropertyTimestampDialog()
             return
         }
@@ -438,7 +468,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             DialogAction(R.string.editor_toolbar_repeater_timestamp) { launchTimestampDialog(TimestampInsertionMode.REPEATER) },
         )
 
-        currentEditor()?.preserveEditModeOnNextFocusLoss()
+        currentRichEditor()?.preserveEditModeOnNextFocusLoss()
         dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.editor_toolbar_timestamp_title)
             .setItems(actions.map { getString(it.labelRes) }.toTypedArray()) { _, which ->
@@ -469,7 +499,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             )
         }
 
-        currentEditor()?.preserveEditModeOnNextFocusLoss()
+        currentRichEditor()?.preserveEditModeOnNextFocusLoss()
         dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.editor_toolbar_more_title)
             .setItems(actions.map { getString(it.labelRes) }.toTypedArray()) { _, which ->
@@ -480,7 +510,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     }
 
     private fun launchTimestampDialog(mode: TimestampInsertionMode) {
-        val editor = currentEditor() ?: return
+        val editor = currentRichEditor() ?: return
         pendingTimestampInsertionMode = mode
         editor.preserveEditModeOnNextFocusLoss()
 

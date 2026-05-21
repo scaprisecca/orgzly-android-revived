@@ -264,6 +264,15 @@ class RichText(context: Context, attrs: AttributeSet?) :
         }
     }
 
+    fun ensureCursorVisible(
+        charOffset: Int = currentSelectionStart(),
+        reason: RichTextEdit.CursorRevealReason,
+    ) {
+        if (richTextEdit.isVisible) {
+            richTextEdit.ensureCursorVisible(charOffset, reason)
+        }
+    }
+
     fun isBeingEdited(): Boolean {
         return this.richTextEdit.isVisible
     }
