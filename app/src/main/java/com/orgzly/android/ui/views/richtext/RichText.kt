@@ -258,6 +258,12 @@ class RichText(context: Context, attrs: AttributeSet?) :
         }
     }
 
+    fun ensureCursorVisible() {
+        if (richTextEdit.isVisible) {
+            richTextEdit.ensureCursorVisible()
+        }
+    }
+
     fun isBeingEdited(): Boolean {
         return this.richTextEdit.isVisible
     }

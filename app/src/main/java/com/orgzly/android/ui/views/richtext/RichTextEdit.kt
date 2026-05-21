@@ -19,6 +19,14 @@ class RichTextEdit : AppCompatEditText {
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     private val userEditingTextWatcher: TextWatcher = RichTextEditWatcher()
+    private var pendingCursorVisibilityOffset: Int? = null
+    private var cursorVisibilityScheduled = false
+    private val ensureCursorVisibleRunnable = Runnable {
+        cursorVisibilityScheduled = false
+        val charOffset = pendingCursorVisibilityOffset ?: currentSelectionStart()
+        pendingCursorVisibilityOffset = null
+        ensureCursorVisibleNow(charOffset)
+    }
 
     fun activate(charOffset: Int) {
         visibility = View.VISIBLE
@@ -29,57 +37,77 @@ class RichTextEdit : AppCompatEditText {
             setSelection(charOffset)
 
             KeyboardUtils.openSoftKeyboard(this) {
-                scrollForBetterCursorPosition(charOffset)
+                ensureCursorVisible(charOffset)
             }
         }
 
         addTextChangedListener(userEditingTextWatcher)
     }
 
+    fun ensureCursorVisible(charOffset: Int = currentSelectionStart()) {
+        pendingCursorVisibilityOffset = charOffset.coerceAtLeast(0)
+
+        if (cursorVisibilityScheduled) {
+            return
+        }
+
+        cursorVisibilityScheduled = true
+        post(ensureCursorVisibleRunnable)
+    }
+
     // TODO: Handle closed drawers (and such)
-    private fun scrollForBetterCursorPosition(charOffset: Int) {
+    private fun ensureCursorVisibleNow(charOffset: Int) {
+        if (!hasFocus() || !isShown || !isLaidOut) {
+            return
+        }
+
         val scrollView = ancestors.firstOrNull { view -> view is NestedScrollView } as? NestedScrollView
+            ?: return
+        val textLayout = layout ?: return
+        val boundedOffset = charOffset.coerceIn(0, text?.length ?: 0)
+        val line = textLayout.getLineForOffset(boundedOffset)
+        val lineHeight = textLayout.getLineBottom(line) - textLayout.getLineTop(line)
+        val cursorRect = Rect(
+            0,
+            totalPaddingTop + textLayout.getLineTop(line),
+            width,
+            totalPaddingTop + textLayout.getLineBottom(line),
+        )
 
-        if (scrollView != null) {
-            post {
-                val richText = parent as RichText
+        scrollView.offsetDescendantRectToMyCoords(this, cursorRect)
 
-                val line = layout.getLineForOffset(charOffset)
-                val baseline = layout.getLineBaseline(line)
-                val ascent = layout.getLineAscent(line)
+        val visibleTop = scrollView.scrollY
+        val visibleBottom = visibleTop + scrollView.height - scrollView.paddingBottom
+        val topComfort = (lineHeight / 2).coerceAtLeast(0)
+        val bottomComfort = lineHeight.coerceAtLeast(0)
 
-                val cursorY = richText.top + (baseline + ascent)
-
-                val visibleHeight = Rect().let { rect ->
-                    scrollView.getDrawingRect(rect)
-                    rect.bottom - rect.top
-                }
-
-                val scrollTopY = scrollView.scrollY
-                val scroll75pY = scrollTopY + (visibleHeight*3/4)
-
-                // Scroll unless cursor is already in the top part of the visible rect
-                val scrollTo = if (cursorY < scrollTopY) { // Too high
-                    cursorY
-                } else if (cursorY > scroll75pY) {  // Too low
-                    cursorY - (visibleHeight*3/4)
-                } else {
-                    -1
-                }
-
-                if (scrollTo != -1) {
-                    scrollView.smoothScrollTo(0, scrollTo)
-                }
-
-                if (BuildConfig.LOG_DEBUG) {
-                    LogUtils.d(TAG, scrollTo)
-                }
+        val targetScrollY = when {
+            cursorRect.top < visibleTop + topComfort -> {
+                (cursorRect.top - topComfort).coerceAtLeast(0)
             }
+
+            cursorRect.bottom > visibleBottom - bottomComfort -> {
+                (cursorRect.bottom - (scrollView.height - scrollView.paddingBottom) + bottomComfort)
+                    .coerceAtLeast(0)
+            }
+
+            else -> -1
+        }
+
+        if (targetScrollY != -1) {
+            scrollView.scrollTo(0, targetScrollY)
+        }
+
+        if (BuildConfig.LOG_DEBUG) {
+            LogUtils.d(TAG, targetScrollY)
         }
     }
 
     fun deactivate() {
         removeTextChangedListener(userEditingTextWatcher)
+        removeCallbacks(ensureCursorVisibleRunnable)
+        cursorVisibilityScheduled = false
+        pendingCursorVisibilityOffset = null
 
         visibility = View.GONE
     }
@@ -103,7 +131,23 @@ class RichTextEdit : AppCompatEditText {
     fun requestFocusAndOpenKeyboard() {
         requestFocus()
         KeyboardUtils.openSoftKeyboard(this) {
-            scrollForBetterCursorPosition(currentSelectionStart())
+            ensureCursorVisible()
+        }
+    }
+
+    override fun onSelectionChanged(selStart: Int, selEnd: Int) {
+        super.onSelectionChanged(selStart, selEnd)
+
+        if (hasFocus()) {
+            ensureCursorVisible(selEnd.coerceAtLeast(selStart))
+        }
+    }
+
+    override fun onTextChanged(text: CharSequence?, start: Int, lengthBefore: Int, lengthAfter: Int) {
+        super.onTextChanged(text, start, lengthBefore, lengthAfter)
+
+        if (hasFocus() && lengthAfter != 0) {
+            ensureCursorVisible()
         }
     }
 

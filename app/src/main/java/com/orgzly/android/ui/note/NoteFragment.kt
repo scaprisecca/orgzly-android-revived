@@ -24,6 +24,8 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -94,6 +96,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     private var dialog: AlertDialog? = null
     private var pendingTimestampInsertionMode: TimestampInsertionMode? = null
     private var activePropertyValue: EditText? = null
+    private var baseScrollBottomPadding = 0
+    private var imeBottomInset = 0
 
     private lateinit var sharedMainActivityViewModel: SharedMainActivityViewModel
 
@@ -164,6 +168,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
 
         binding = FragmentNoteBinding.inflate(inflater, container, false)
+        baseScrollBottomPadding = binding.scrollView.paddingBottom
 
         return binding.root
     }
@@ -267,6 +272,14 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         setContentFoldState(AppPreferences.isNoteContentFolded(context))
         binding.content.setOnModeChangeListener(this)
         binding.title.setOnModeChangeListener(this)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
+            val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val navigationInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            imeBottomInset = (imeInsets - navigationInsets).coerceAtLeast(0)
+            updateScrollBottomPadding()
+            windowInsets
+        }
+        ViewCompat.requestApplyInsets(binding.root)
         setupEditorToolbar()
         updateEditorToolbar()
     }
@@ -318,7 +331,6 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         val propertyValueActive = !richEditorActive && currentPropertyValue() != null
         val hasEditor = (richEditorActive || propertyValueActive) && binding.viewFlipper.displayedChild == 0
         val contentEditorActive = binding.content.isBeingEdited()
-        val scrollView = binding.scrollView
 
         binding.editorToolbarContainer.goneUnless(hasEditor)
         binding.editorToolbarBold.isEnabled = hasEditor && !propertyValueActive
@@ -330,14 +342,20 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         binding.editorToolbarCheckbox.isEnabled = contentEditorActive
         binding.editorToolbarDeindent.isEnabled = contentEditorActive
         binding.editorToolbarIndent.isEnabled = contentEditorActive
+        updateScrollBottomPadding()
+    }
 
+    private fun updateScrollBottomPadding() {
+        val scrollView = binding.scrollView
         val oldBottomPadding = scrollView.paddingBottom
         val wasAtBottom = !scrollView.canScrollVertically(1)
-        val bottomPadding = if (hasEditor) {
-            resources.getDimensionPixelSize(R.dimen.fragment_note_editor_toolbar_height)
+        val toolbarHeight = if (binding.editorToolbarContainer.visibility == View.VISIBLE) {
+            binding.editorToolbarContainer.height.takeIf { it > 0 }
+                ?: resources.getDimensionPixelSize(R.dimen.fragment_note_editor_toolbar_height)
         } else {
             0
         }
+        val bottomPadding = baseScrollBottomPadding + toolbarHeight + imeBottomInset
 
         scrollView.setPadding(
             scrollView.paddingLeft,
@@ -353,6 +371,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
                 scrollView.scrollBy(0, paddingDelta)
             }
         }
+
+        currentEditor()?.ensureCursorVisible()
     }
 
     private fun currentEditor(): RichText? {
@@ -961,6 +981,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
+        imeBottomInset = 0
         binding.viewFlipper.displayedChild = 0
     }
 
