@@ -386,8 +386,11 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
     private fun activeEditorRole(): ActiveEditorRole? {
         return when {
-            binding.content.isBeingEdited() -> ActiveEditorRole.CONTENT
+            binding.title.hasFocus() && binding.title.isBeingEdited() -> ActiveEditorRole.TITLE
+            binding.content.hasFocus() && binding.content.isBeingEdited() -> ActiveEditorRole.CONTENT
+            currentPropertyValue()?.hasFocus() == true -> ActiveEditorRole.PROPERTY_VALUE
             binding.title.isBeingEdited() -> ActiveEditorRole.TITLE
+            binding.content.isBeingEdited() -> ActiveEditorRole.CONTENT
             currentPropertyValue() != null -> ActiveEditorRole.PROPERTY_VALUE
             else -> null
         }
@@ -406,7 +409,13 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     }
 
     private fun revealTitleEditor() {
-        binding.scrollView.post {
+        binding.scrollView.post { scrollToTitleEditor() }
+        binding.scrollView.postDelayed({ scrollToTitleEditor() }, 150)
+        binding.scrollView.postDelayed({ scrollToTitleEditor() }, 350)
+    }
+
+    private fun scrollToTitleEditor() {
+        if (activeEditorRole() == ActiveEditorRole.TITLE) {
             val titleTop = (binding.title.top - binding.scrollView.paddingTop).coerceAtLeast(0)
             if (binding.scrollView.scrollY != titleTop) {
                 binding.scrollView.scrollTo(0, titleTop)
