@@ -278,9 +278,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         binding.content.setOnModeChangeListener(this)
         binding.title.setOnModeChangeListener(this)
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
-            val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-            val navigationInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            imeBottomInset = (imeInsets - navigationInsets).coerceAtLeast(0)
+            imeBottomInset = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom.coerceAtLeast(0)
             updateEditorToolbar()
             windowInsets
         }
@@ -354,7 +352,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     private fun updateScrollBottomPadding() {
         val scrollView = binding.scrollView
         val oldBottomPadding = scrollView.paddingBottom
-        val wasAtBottom = !scrollView.canScrollVertically(1)
+        val editorRole = activeEditorRole()
+        val wasAtBottom = editorRole == ActiveEditorRole.CONTENT && !scrollView.canScrollVertically(1)
         val toolbarHeight = if (binding.editorToolbarContainer.visibility == View.VISIBLE) {
             binding.editorToolbarContainer.height.takeIf { it > 0 }
                 ?: resources.getDimensionPixelSize(R.dimen.fragment_note_editor_toolbar_height)
@@ -378,10 +377,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             }
         }
 
-        when (activeEditorRole()) {
-            ActiveEditorRole.CONTENT -> binding.content.ensureCursorVisible(
-                reason = com.orgzly.android.ui.views.richtext.RichTextEdit.CursorRevealReason.PADDING_CHANGED,
-            )
+        when (editorRole) {
+            ActiveEditorRole.CONTENT -> Unit
             ActiveEditorRole.TITLE -> revealTitleEditor()
             ActiveEditorRole.PROPERTY_VALUE, null -> Unit
         }
@@ -412,7 +409,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         binding.scrollView.post {
             val titleTop = (binding.title.top - binding.scrollView.paddingTop).coerceAtLeast(0)
             if (binding.scrollView.scrollY != titleTop) {
-                binding.scrollView.smoothScrollTo(0, titleTop)
+                binding.scrollView.scrollTo(0, titleTop)
             }
         }
     }

@@ -97,7 +97,12 @@ class RichTextEdit : AppCompatEditText {
         scrollView.offsetDescendantRectToMyCoords(this, cursorRect)
 
         val visibleTop = scrollView.scrollY
-        val visibleBottom = visibleTop + scrollView.height - scrollView.paddingBottom
+        val bottomPadding = if (request.reason == CursorRevealReason.INITIAL_ACTIVATION) {
+            0
+        } else {
+            scrollView.paddingBottom
+        }
+        val visibleBottom = visibleTop + scrollView.height - bottomPadding
         val viewportHeight = (visibleBottom - visibleTop).coerceAtLeast(0)
         if (viewportHeight == 0) {
             return
