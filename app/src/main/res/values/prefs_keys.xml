@@ -223,6 +223,8 @@
 
     <string name="pref_key_share_notebook" translatable="false">pref_key_share_notebook</string>
     <string name="pref_default_share_notebook" translatable="false">@string/default_share_notebook</string>
+    <string name="pref_key_done_archive_book_id" translatable="false">pref_key_done_archive_book_id</string>
+    <string name="pref_default_done_archive_book_id" translatable="false"></string>
 
     <string name="pref_key_force_utf8" translatable="false">pref_key_force_utf8</string>
     <bool name="pref_default_force_utf8" translatable="false">false</bool>

@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a side-by-side `Orgzly Revived Dev` app variant and helper build scripts so local test builds can coexist with the installed store or F-Droid app.
 - Added a guided saved-search builder for agenda-style views, plus built-in preset searches for Today / overdue, Next 7 days, No Date, Waiting, Calendar, Home, Business, and Recurring chores.
 - Added saved-search metadata, property query filters, and agenda date-source options so guided views reopen for editing while staying compatible with the existing search engine.
+- Added a configurable done-list destination and bulk actions to move completed tasks into it from the current notebook or a selected heading.
 
 ### Fixed
 - Clarified guided saved-search property filter help text so users know exact matches require both the property name and value, for example `client=acme` or `client: acme`.

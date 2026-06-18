@@ -12,6 +12,9 @@ import com.orgzly.android.ui.AppBar
 import com.orgzly.android.ui.CommonViewModel
 import com.orgzly.android.ui.SingleLiveEvent
 import com.orgzly.android.usecase.BookCycleVisibility
+import com.orgzly.android.usecase.DoneArchiveResult
+import com.orgzly.android.usecase.DoneArchiveScope
+import com.orgzly.android.usecase.NoteArchiveDone
 import com.orgzly.android.usecase.NoteToggleFoldingSubtree
 import com.orgzly.android.usecase.UseCaseRunner
 
@@ -119,11 +122,31 @@ class BookViewModel(private val dataRepository: DataRepository, val bookId: Long
 
 
     val notesDeleteRequest: SingleLiveEvent<Pair<Set<Long>, Int>> = SingleLiveEvent()
+    val archiveDoneEvent: SingleLiveEvent<DoneArchiveResult> = SingleLiveEvent()
 
     fun requestNotesDelete(ids: Set<Long>) {
         App.EXECUTORS.diskIO().execute {
             val count = dataRepository.getNotesAndSubtreesCount(ids)
             notesDeleteRequest.postValue(Pair(ids, count))
+        }
+    }
+
+    fun archiveDoneInCurrentScope() {
+        val scope = narrowedNoteId.value?.let { DoneArchiveScope.Heading(bookId, it) }
+            ?: DoneArchiveScope.Book(bookId)
+        archiveDone(scope)
+    }
+
+    fun archiveDoneInHeading(noteId: Long) {
+        archiveDone(DoneArchiveScope.Heading(bookId, noteId))
+    }
+
+    private fun archiveDone(scope: DoneArchiveScope) {
+        App.EXECUTORS.diskIO().execute {
+            catchAndPostError {
+                val result = UseCaseRunner.run(NoteArchiveDone(scope))
+                archiveDoneEvent.postValue(result.userData as DoneArchiveResult)
+            }
         }
     }
 }

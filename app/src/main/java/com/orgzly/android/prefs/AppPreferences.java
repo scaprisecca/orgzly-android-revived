@@ -279,6 +279,30 @@ public class AppPreferences {
                 context.getResources().getString(R.string.pref_default_share_notebook));
     }
 
+    @Nullable
+    public static Long doneArchiveBookId(Context context) {
+        String value = getDefaultSharedPreferences(context).getString(
+                context.getResources().getString(R.string.pref_key_done_archive_book_id),
+                context.getResources().getString(R.string.pref_default_done_archive_book_id));
+
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    public static void doneArchiveBookId(Context context, @Nullable Long value) {
+        String key = context.getResources().getString(R.string.pref_key_done_archive_book_id);
+        getDefaultSharedPreferences(context).edit()
+                .putString(key, value == null ? "" : String.valueOf(value))
+                .apply();
+    }
+
     private static String captureTemplateEnabledKey(String templateId) {
         return "pref_key_capture_template_" + templateId + "_enabled";
     }
