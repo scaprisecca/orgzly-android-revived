@@ -50,6 +50,7 @@ import com.orgzly.android.ui.drawer.DrawerItem
 import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.android.ui.main.SharedMainActivityViewModel
 import com.orgzly.android.ui.notes.book.BookFragment
+import com.orgzly.android.ui.refile.RefileFragment
 import com.orgzly.android.ui.settings.SettingsActivity
 import com.orgzly.android.ui.share.ShareActivity
 import com.orgzly.android.ui.showSnackbar
@@ -61,6 +62,7 @@ import com.orgzly.android.ui.util.goneUnless
 import com.orgzly.android.ui.util.invisibleIf
 import com.orgzly.android.ui.util.invisibleUnless
 import com.orgzly.android.ui.views.richtext.RichText
+import com.orgzly.android.usecase.NoteRefile
 import com.orgzly.android.util.LogUtils
 import com.orgzly.android.util.OrgFormatter
 import com.orgzly.android.util.SpaceTokenizer
@@ -150,6 +152,10 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         val factory = NoteViewModelFactory.getInstance(dataRepository, noteInitialData)
 
         viewModel = ViewModelProvider(this, factory)[NoteViewModel::class.java]
+
+        childFragmentManager.setFragmentResultListener(RefileFragment.TARGET_RESULT_KEY, this) { _, bundle ->
+            handleRefileTargetSelected(RefileFragment.notePlaceFromResult(bundle))
+        }
 
         requireActivity().onBackPressedDispatcher.addCallback(this, userCancelBackPressHandler)
     }
@@ -524,6 +530,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
     // Displaying a non-existent note, remove some menu items
     private fun removeMenuItemsForNoData(menu: Menu) {
+        menu.removeItem(R.id.refile)
         menu.removeItem(R.id.done)
         menu.removeItem(R.id.metadata)
         menu.removeItem(R.id.delete)
@@ -532,6 +539,10 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
     private fun handleActionItemClick(menuItem: MenuItem): Boolean {
         when (menuItem.itemId) {
+            R.id.refile -> {
+                launchRefilePicker()
+            }
+
             R.id.done -> {
                 userSave()
             }
@@ -637,6 +648,10 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             listener?.onNoteUpdated(note)
         })
 
+        viewModel.noteRefiledEvent.observe(viewLifecycleOwner, Observer { note ->
+            listener?.onNoteUpdated(note)
+        })
+
         viewModel.noteDeletedEvent.observeSingle(viewLifecycleOwner) { count ->
             (activity as? MainActivity)?.popBackStackAndCloseKeyboard()
 
@@ -668,7 +683,13 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         }
 
         viewModel.errorEvent.observeSingle(viewLifecycleOwner) { error ->
-            activity?.showSnackbar((error.cause ?: error).localizedMessage)
+            val message = if (error is NoteRefile.TargetInNotesSubtree) {
+                getString(R.string.cannot_refile_to_the_same_subtree)
+            } else {
+                (error.cause ?: error).localizedMessage
+            }
+
+            activity?.showSnackbar(message)
         }
 
         viewModel.snackBarMessage.observeSingle(viewLifecycleOwner) { resId ->
@@ -1279,6 +1300,26 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         updatePayloadFromViews()
 
         viewModel.saveNote()
+    }
+
+    private fun launchRefilePicker() {
+        RefileFragment.getTargetSelectionInstance()
+            .show(childFragmentManager, RefileFragment.FRAGMENT_TAG)
+    }
+
+    private fun handleRefileTargetSelected(notePlace: NotePlace) {
+        KeyboardUtils.closeSoftKeyboard(activity)
+        updatePayloadFromViews()
+
+        if (viewModel.isNew()) {
+            viewModel.saveNewNoteAt(notePlace)
+        } else {
+            viewModel.saveNote { note ->
+                viewModel.refileCurrentNote(notePlace) {
+                    listener?.onNoteUpdated(note)
+                }
+            }
+        }
     }
 
     private fun userCancel(): Boolean {

@@ -19,6 +19,8 @@ import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.Book
 import com.orgzly.android.db.entity.Note
 import com.orgzly.android.ui.Breadcrumbs
+import com.orgzly.android.ui.NotePlace
+import com.orgzly.android.ui.Place
 import com.orgzly.android.ui.showSnackbar
 import com.orgzly.android.ui.util.invisibleIf
 import com.orgzly.android.usecase.NoteRefile
@@ -46,10 +48,14 @@ class RefileFragment : DialogFragment() {
 
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
-        val noteIds = arguments?.getLongArray(ARG_NOTE_IDS)?.toSet() ?: emptySet()
-        val count = arguments?.getInt(ARG_COUNT) ?: 0
+        val factory = if (arguments?.getBoolean(ARG_TARGET_SELECTION_MODE) == true) {
+            RefileViewModelFactory.forTargetSelection(dataRepository)
+        } else {
+            val noteIds = arguments?.getLongArray(ARG_NOTE_IDS)?.toSet() ?: emptySet()
+            val count = arguments?.getInt(ARG_COUNT) ?: 0
 
-        val factory = RefileViewModelFactory.forNotes(dataRepository, noteIds, count)
+            RefileViewModelFactory.forNotes(dataRepository, noteIds, count)
+        }
 
         viewModel = ViewModelProvider(this, factory).get(RefileViewModel::class.java)
     }
@@ -74,8 +80,12 @@ class RefileFragment : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.dialogRefileToolbar.apply {
-            title = resources.getQuantityString(
+            title = if (arguments?.getBoolean(ARG_TARGET_SELECTION_MODE) == true) {
+                getString(R.string.refile)
+            } else {
+                resources.getQuantityString(
                     R.plurals.refile_notes, viewModel.count, viewModel.count)
+            }
 
             setNavigationOnClickListener {
                 dismiss()
@@ -131,6 +141,18 @@ class RefileFragment : DialogFragment() {
                     viewModel.goTo(firstRefiledNote.id)
                 }
             }
+        })
+
+        viewModel.targetSelectedEvent.observeSingle(viewLifecycleOwner, Observer { notePlace ->
+            parentFragmentManager.setFragmentResult(
+                TARGET_RESULT_KEY,
+                Bundle().apply {
+                    putLong(RESULT_BOOK_ID, notePlace.bookId)
+                    putLong(RESULT_NOTE_ID, notePlace.noteId)
+                    putString(RESULT_PLACE, notePlace.place.name)
+                }
+            )
+            dismiss()
         })
 
         viewModel.errorEvent.observeSingle(viewLifecycleOwner, Observer { error ->
@@ -205,8 +227,34 @@ class RefileFragment : DialogFragment() {
             }
         }
 
+        fun getTargetSelectionInstance(): RefileFragment {
+            return RefileFragment().also { fragment ->
+                fragment.arguments = Bundle().apply {
+                    putBoolean(ARG_TARGET_SELECTION_MODE, true)
+                }
+            }
+        }
+
+        fun notePlaceFromResult(bundle: Bundle): NotePlace {
+            val bookId = bundle.getLong(RESULT_BOOK_ID)
+            val noteId = bundle.getLong(RESULT_NOTE_ID)
+            val place = bundle.getString(RESULT_PLACE)?.let(Place::valueOf) ?: Place.UNSPECIFIED
+
+            return if (noteId > 0L) {
+                NotePlace(bookId, noteId, place)
+            } else {
+                NotePlace(bookId)
+            }
+        }
+
         private const val ARG_NOTE_IDS = "note_ids"
         private const val ARG_COUNT = "count"
+        private const val ARG_TARGET_SELECTION_MODE = "target_selection_mode"
+
+        const val TARGET_RESULT_KEY = "refile_target_result"
+        private const val RESULT_BOOK_ID = "result_book_id"
+        private const val RESULT_NOTE_ID = "result_note_id"
+        private const val RESULT_PLACE = "result_place"
 
         private val TAG = RefileFragment::class.java.name
 
