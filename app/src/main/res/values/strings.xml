@@ -11,6 +11,8 @@
     <string name="editor_toolbar_link">Link</string>
     <string name="editor_toolbar_bullet">Bullet list item</string>
     <string name="editor_toolbar_checkbox">Checkbox item</string>
+    <string name="editor_toolbar_deindent">Decrease indent</string>
+    <string name="editor_toolbar_indent">Increase indent</string>
     <string name="editor_toolbar_more">More insert actions</string>
     <string name="editor_toolbar_more_short">More</string>
     <string name="editor_toolbar_more_title">Insert</string>

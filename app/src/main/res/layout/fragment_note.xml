@@ -387,6 +387,18 @@
                 android:contentDescription="@string/editor_toolbar_checkbox"
                 android:text="[ ]" />
 
+            <Button
+                android:id="@+id/editor_toolbar_deindent"
+                style="@style/EditorToolbarTextButton"
+                android:contentDescription="@string/editor_toolbar_deindent"
+                android:text="←" />
+
+            <Button
+                android:id="@+id/editor_toolbar_indent"
+                style="@style/EditorToolbarTextButton"
+                android:contentDescription="@string/editor_toolbar_indent"
+                android:text="→" />
+
             <ImageButton
                 android:id="@+id/editor_toolbar_timestamp"
                 style="@style/EditorToolbarImageButton"

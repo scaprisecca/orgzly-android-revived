@@ -20,6 +20,7 @@ data class EditorEditResult(
 
 object EditorToolbarActions {
     private const val LINE_BREAK = "\n"
+    private const val INDENT = "  "
 
     fun bold(text: String, selection: EditorSelection): EditorEditResult {
         return wrap(text, selection, "*", "*")
@@ -57,6 +58,44 @@ object EditorToolbarActions {
         return transformLines(text, selection) { _, line ->
             "- [ ] $line"
         }
+    }
+
+    fun indent(text: String, selection: EditorSelection): EditorEditResult {
+        return transformLines(text, selection) { _, line ->
+            INDENT + line
+        }
+    }
+
+    fun deindent(text: String, selection: EditorSelection): EditorEditResult {
+        val lineStart = lineStart(text, selection.start)
+        val lineEnd = lineEnd(text, selection.end)
+        val selectedBlock = text.substring(lineStart, lineEnd)
+        val lines = selectedBlock.split(LINE_BREAK)
+        val removedIndents = lines.map { removableIndentLength(it) }
+        val transformed = lines.mapIndexed { index, line ->
+            line.drop(removedIndents[index])
+        }.joinToString(LINE_BREAK)
+
+        val selectionStartOffset = selection.start - lineStart
+        val firstRemovedBeforeSelection = removedIndents.firstOrNull()
+            ?.coerceAtMost(selectionStartOffset)
+            ?: 0
+        val newSelection = if (selection.isCollapsed) {
+            val cursor = selection.start - firstRemovedBeforeSelection
+            EditorSelection(cursor, cursor)
+        } else {
+            EditorSelection(
+                selection.start - firstRemovedBeforeSelection,
+                lineStart + transformed.length,
+            )
+        }
+
+        return replace(
+            text,
+            EditorSelection(lineStart, lineEnd),
+            transformed,
+            newSelection,
+        )
     }
 
     fun numberedList(text: String, selection: EditorSelection): EditorEditResult {
@@ -204,5 +243,14 @@ object EditorToolbarActions {
 
         val nextBreak = text.indexOf('\n', boundedIndex)
         return if (nextBreak == -1) text.length else nextBreak
+    }
+
+    private fun removableIndentLength(line: String): Int {
+        return when {
+            line.startsWith(INDENT) -> INDENT.length
+            line.startsWith('\t') -> 1
+            line.startsWith(' ') -> 1
+            else -> 0
+        }
     }
 }

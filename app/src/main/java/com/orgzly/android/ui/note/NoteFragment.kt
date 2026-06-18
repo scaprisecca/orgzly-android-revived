@@ -287,6 +287,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             binding.editorToolbarLink,
             binding.editorToolbarBullet,
             binding.editorToolbarCheckbox,
+            binding.editorToolbarDeindent,
+            binding.editorToolbarIndent,
             binding.editorToolbarTimestamp,
             binding.editorToolbarMore,
         )
@@ -305,6 +307,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         binding.editorToolbarLink.setOnClickListener { applyEditorAction(ToolbarAction.LINK) }
         binding.editorToolbarBullet.setOnClickListener { applyEditorAction(ToolbarAction.BULLET) }
         binding.editorToolbarCheckbox.setOnClickListener { applyEditorAction(ToolbarAction.CHECKBOX) }
+        binding.editorToolbarDeindent.setOnClickListener { applyEditorAction(ToolbarAction.DEINDENT) }
+        binding.editorToolbarIndent.setOnClickListener { applyEditorAction(ToolbarAction.INDENT) }
         binding.editorToolbarTimestamp.setOnClickListener { showTimestampActions() }
         binding.editorToolbarMore.setOnClickListener { showInsertActions() }
     }
@@ -324,6 +328,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         binding.editorToolbarMore.isEnabled = hasEditor && !propertyValueActive
         binding.editorToolbarBullet.isEnabled = contentEditorActive
         binding.editorToolbarCheckbox.isEnabled = contentEditorActive
+        binding.editorToolbarDeindent.isEnabled = contentEditorActive
+        binding.editorToolbarIndent.isEnabled = contentEditorActive
 
         val oldBottomPadding = scrollView.paddingBottom
         val wasAtBottom = !scrollView.canScrollVertically(1)
@@ -379,6 +385,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
             ToolbarAction.LINK -> EditorToolbarActions.link(text, selection)
             ToolbarAction.BULLET -> EditorToolbarActions.bulletList(text, selection)
             ToolbarAction.CHECKBOX -> EditorToolbarActions.checkboxList(text, selection)
+            ToolbarAction.DEINDENT -> EditorToolbarActions.deindent(text, selection)
+            ToolbarAction.INDENT -> EditorToolbarActions.indent(text, selection)
             ToolbarAction.CODE -> EditorToolbarActions.code(text, selection)
             ToolbarAction.HEADING -> EditorToolbarActions.heading(text, selection)
             ToolbarAction.TODO_STATE_ITEM -> EditorToolbarActions.todoStateItem(text, selection)
@@ -1491,6 +1499,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         LINK(contentOnly = false),
         BULLET(contentOnly = true),
         CHECKBOX(contentOnly = true),
+        DEINDENT(contentOnly = true),
+        INDENT(contentOnly = true),
         CODE(contentOnly = false),
         HEADING(contentOnly = true),
         TODO_STATE_ITEM(contentOnly = true),
