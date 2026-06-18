@@ -823,7 +823,7 @@
     <string name="capture_template_body_template">Body scaffold</string>
     <string name="capture_template_default_state">Default state</string>
     <string name="capture_template_tags">Tags</string>
-    <string name="capture_template_tags_summary">Comma-separated tags</string>
+    <string name="capture_template_tags_summary">Comma-separated tags; suggestions come from existing note tags</string>
     <string name="capture_template_saved">Capture template saved</string>
     <string name="capture_template_deleted">Capture template deleted</string>
     <string name="capture_template_duplicated">Capture template duplicated</string>
