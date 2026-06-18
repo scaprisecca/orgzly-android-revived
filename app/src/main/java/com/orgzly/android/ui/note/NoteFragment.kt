@@ -104,7 +104,6 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     private var baseScrollBottomPadding = 0
     private var imeBottomInset = 0
     private var forceNewNoteTitleReveal = false
-    private var correctingNewNoteTitleScroll = false
 
     private lateinit var sharedMainActivityViewModel: SharedMainActivityViewModel
 
@@ -279,18 +278,6 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         setContentFoldState(AppPreferences.isNoteContentFolded(context))
         binding.content.setOnModeChangeListener(this)
         binding.title.setOnModeChangeListener(this)
-        binding.scrollView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
-            if (shouldForceTitleReveal() && !correctingNewNoteTitleScroll) {
-                val titleTop = titleScrollTop()
-                if (scrollY != titleTop) {
-                    correctingNewNoteTitleScroll = true
-                    binding.scrollView.post {
-                        binding.scrollView.scrollTo(0, titleTop)
-                        correctingNewNoteTitleScroll = false
-                    }
-                }
-            }
-        }
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
             imeBottomInset = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom.coerceAtLeast(0)
             updateEditorToolbar()
@@ -348,9 +335,6 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
     private fun updateEditorToolbar() {
         val editorRole = activeEditorRole()
-        if (forceNewNoteTitleReveal && editorRole != ActiveEditorRole.TITLE) {
-            forceNewNoteTitleReveal = false
-        }
         val propertyValueActive = editorRole == ActiveEditorRole.PROPERTY_VALUE
         val hasEditor = editorRole != null && binding.viewFlipper.displayedChild == 0
         val contentEditorActive = editorRole == ActiveEditorRole.CONTENT
@@ -428,14 +412,6 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         return activePropertyValue?.takeIf { it.isAttachedToWindow }
     }
 
-    private fun shouldForceTitleReveal(): Boolean {
-        return forceNewNoteTitleReveal && binding.title.isBeingEdited()
-    }
-
-    private fun titleScrollTop(): Int {
-        return (binding.title.top - binding.scrollView.paddingTop).coerceAtLeast(0)
-    }
-
     private fun revealTitleEditor(force: Boolean = false) {
         binding.scrollView.post { scrollToTitleEditor(force) }
         binding.scrollView.postDelayed({ scrollToTitleEditor(force) }, 150)
@@ -448,7 +424,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
     private fun scrollToTitleEditor(force: Boolean = false) {
         if (force || activeEditorRole() == ActiveEditorRole.TITLE) {
-            val titleTop = titleScrollTop()
+            val titleTop = (binding.title.top - binding.scrollView.paddingTop).coerceAtLeast(0)
             if (binding.scrollView.scrollY != titleTop) {
                 binding.scrollView.scrollTo(0, titleTop)
             }
@@ -1014,6 +990,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
                     binding.title.toEditMode(0)
                     revealTitleEditor(force = true)
                 }
+                binding.scrollView.postDelayed({ forceNewNoteTitleReveal = false }, 1500)
             }
         }
 
