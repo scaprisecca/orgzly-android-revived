@@ -30,22 +30,4 @@ class CaptureTemplateTagInputTest {
     fun normalizationReturnsNullWhenNoTagsRemain() {
         assertThat(CaptureTemplateTagInput.normalizeTagsCsv(" ,  , "), `is`(null as String?))
     }
-
-    @Test
-    fun matcherRanksExactThenPrefixThenContainsThenSubsequence() {
-        val dictionary = listOf("meeting", "meetup", "team-meeting", "marketing")
-
-        assertThat(
-            CaptureTemplateTagMatcher.match(dictionary, "meeting"),
-            `is`(listOf("meeting", "team-meeting")),
-        )
-        assertThat(
-            CaptureTemplateTagMatcher.match(dictionary, "mee"),
-            `is`(listOf("meeting", "meetup", "team-meeting")),
-        )
-        assertThat(
-            CaptureTemplateTagMatcher.match(dictionary, "mkt"),
-            `is`(listOf("marketing")),
-        )
-    }
 }

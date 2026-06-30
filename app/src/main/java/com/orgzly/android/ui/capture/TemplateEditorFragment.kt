@@ -12,6 +12,8 @@ import com.orgzly.R
 import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.CaptureTemplateEntity
+import com.orgzly.android.ui.util.CommaSeparatedAutocomplete
+import com.orgzly.android.ui.util.CommaSeparatedSuggestionAdapter
 import com.orgzly.android.ui.settings.SettingsActivity
 import com.orgzly.android.ui.showSnackbar
 import com.orgzly.databinding.FragmentCaptureTemplateEditorBinding
@@ -88,7 +90,7 @@ class TemplateEditorFragment : androidx.fragment.app.Fragment() {
     }
 
     private fun setupTagsAutocomplete() {
-        val adapter = CaptureTemplateTagSuggestionAdapter(
+        val adapter = CommaSeparatedSuggestionAdapter(
             requireContext(),
             R.layout.dropdown_item,
         )
@@ -117,9 +119,7 @@ class TemplateEditorFragment : androidx.fragment.app.Fragment() {
     private fun currentTagToken(): String {
         val text = binding.tagsInput.text ?: return ""
         val cursor = binding.tagsInput.selectionStart.takeIf { it >= 0 } ?: text.length
-        val start = CaptureTemplateTagInput.tokenizer.findTokenStart(text, cursor)
-        val end = CaptureTemplateTagInput.tokenizer.findTokenEnd(text, cursor)
-        return text.subSequence(start, end).toString().trim()
+        return CommaSeparatedAutocomplete.currentToken(text, cursor)
     }
 
     private fun loadTemplate() {

@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
 import androidx.appcompat.widget.AppCompatAutoCompleteTextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -17,6 +18,7 @@ import com.orgzly.R
 import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.SavedSearch
+import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.savedsearch.builder.AgendaViewBuilderState
 import com.orgzly.android.savedsearch.builder.AgendaViewBuilderState.DateFilter
 import com.orgzly.android.savedsearch.builder.AgendaViewBuilderState.PropertyFilter
@@ -27,6 +29,8 @@ import com.orgzly.android.ui.CommonFragment
 import com.orgzly.android.ui.drawer.DrawerItem
 import com.orgzly.android.ui.main.SharedMainActivityViewModel
 import com.orgzly.android.ui.savedsearches.SavedSearchesFragment
+import com.orgzly.android.ui.util.CommaSeparatedAutocomplete
+import com.orgzly.android.ui.util.CommaSeparatedSuggestionAdapter
 import com.orgzly.android.ui.util.KeyboardUtils
 import com.orgzly.android.util.LogUtils
 import com.orgzly.databinding.FragmentAgendaSavedSearchBuilderBinding
@@ -66,6 +70,7 @@ class AgendaSavedSearchBuilderFragment : CommonFragment(), DrawerItem {
         super.onViewCreated(view, savedInstanceState)
 
         setupDropdowns()
+        setupListAutocompletes()
         setupToolbar()
         setupPreviewUpdates()
 
@@ -129,6 +134,41 @@ class AgendaSavedSearchBuilderFragment : CommonFragment(), DrawerItem {
         binding.topToolbar.setOnClickListener { binding.scrollView.scrollTo(0, 0) }
     }
 
+    private fun setupListAutocompletes() {
+        val notebookAdapter = newListSuggestionAdapter()
+        val excludeNotebookAdapter = newListSuggestionAdapter()
+        setupListAutocomplete(binding.fragmentSavedSearchBuilderIncludeNotebooks, notebookAdapter)
+        setupListAutocomplete(binding.fragmentSavedSearchBuilderExcludeNotebooks, excludeNotebookAdapter)
+
+        val notebookNames = dataRepository.getBooks()
+            .map { it.book.name }
+            .distinct()
+            .sorted()
+        notebookAdapter.updateDictionary(notebookNames)
+        excludeNotebookAdapter.updateDictionary(notebookNames)
+
+        val tagAdapter = newListSuggestionAdapter()
+        val excludeTagAdapter = newListSuggestionAdapter()
+        setupListAutocomplete(binding.fragmentSavedSearchBuilderIncludeTags, tagAdapter)
+        setupListAutocomplete(binding.fragmentSavedSearchBuilderExcludeTags, excludeTagAdapter)
+
+        dataRepository.selectAllTagsLiveData().observe(viewLifecycleOwner) { tags ->
+            tagAdapter.updateDictionary(tags)
+            excludeTagAdapter.updateDictionary(tags)
+        }
+
+        val stateAdapter = newListSuggestionAdapter()
+        val excludeStateAdapter = newListSuggestionAdapter()
+        setupListAutocomplete(binding.fragmentSavedSearchBuilderIncludeStates, stateAdapter)
+        setupListAutocomplete(binding.fragmentSavedSearchBuilderExcludeStates, excludeStateAdapter)
+
+        val states = (AppPreferences.todoKeywordsSet(requireContext()) + AppPreferences.doneKeywordsSet(requireContext()))
+            .distinct()
+            .sorted()
+        stateAdapter.updateDictionary(states)
+        excludeStateAdapter.updateDictionary(states)
+    }
+
     private fun setupPreviewUpdates() {
         val watcher = object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -158,6 +198,35 @@ class AgendaSavedSearchBuilderFragment : CommonFragment(), DrawerItem {
 
         binding.fragmentSavedSearchBuilderDateFilterValue.setOnItemClickListener { _, _, _, _ -> refreshPreview() }
         binding.fragmentSavedSearchBuilderSortValue.setOnItemClickListener { _, _, _, _ -> refreshPreview() }
+    }
+
+    private fun newListSuggestionAdapter(): CommaSeparatedSuggestionAdapter {
+        return CommaSeparatedSuggestionAdapter(requireContext(), R.layout.dropdown_item)
+    }
+
+    private fun setupListAutocomplete(
+        view: AppCompatMultiAutoCompleteTextView,
+        adapter: CommaSeparatedSuggestionAdapter,
+    ) {
+        view.setAdapter(adapter)
+        view.setTokenizer(CommaSeparatedAutocomplete.tokenizer)
+        view.threshold = 1
+        view.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && currentListToken(view).isEmpty()) {
+                view.showDropDown()
+            }
+        }
+        view.setOnClickListener {
+            if (currentListToken(view).isEmpty()) {
+                view.showDropDown()
+            }
+        }
+    }
+
+    private fun currentListToken(view: AppCompatMultiAutoCompleteTextView): String {
+        val text = view.text ?: return ""
+        val cursor = view.selectionStart.takeIf { it >= 0 } ?: text.length
+        return CommaSeparatedAutocomplete.currentToken(text, cursor)
     }
 
     private fun bindState(state: AgendaViewBuilderState) {

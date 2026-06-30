@@ -40,7 +40,7 @@
                 android:layout_height="wrap_content"
                 app:helperText="@string/saved_search_builder_list_helper">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
                     android:id="@+id/fragment_saved_search_builder_include_notebooks"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -53,7 +53,7 @@
                 android:layout_height="wrap_content"
                 app:helperText="@string/saved_search_builder_list_helper">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
                     android:id="@+id/fragment_saved_search_builder_exclude_notebooks"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -66,7 +66,7 @@
                 android:layout_height="wrap_content"
                 app:helperText="@string/saved_search_builder_list_helper">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
                     android:id="@+id/fragment_saved_search_builder_include_tags"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -79,7 +79,7 @@
                 android:layout_height="wrap_content"
                 app:helperText="@string/saved_search_builder_list_helper">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
                     android:id="@+id/fragment_saved_search_builder_exclude_tags"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -92,7 +92,7 @@
                 android:layout_height="wrap_content"
                 app:helperText="@string/saved_search_builder_list_helper">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
                     android:id="@+id/fragment_saved_search_builder_include_states"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -105,7 +105,7 @@
                 android:layout_height="wrap_content"
                 app:helperText="@string/saved_search_builder_list_helper">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
                     android:id="@+id/fragment_saved_search_builder_exclude_states"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
