@@ -12,6 +12,7 @@ import com.orgzly.R
 import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.CaptureTemplateEntity
+import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.ui.util.CommaSeparatedAutocomplete
 import com.orgzly.android.ui.util.CommaSeparatedSuggestionAdapter
 import com.orgzly.android.ui.settings.SettingsActivity
@@ -51,6 +52,7 @@ class TemplateEditorFragment : androidx.fragment.app.Fragment() {
 
         setupNotebookDropdown()
         setupTagsAutocomplete()
+        setupDefaultStateAutocomplete()
         binding.save.setOnClickListener { saveTemplate() }
         binding.delete.setOnClickListener { confirmDelete() }
     }
@@ -120,6 +122,33 @@ class TemplateEditorFragment : androidx.fragment.app.Fragment() {
         val text = binding.tagsInput.text ?: return ""
         val cursor = binding.tagsInput.selectionStart.takeIf { it >= 0 } ?: text.length
         return CommaSeparatedAutocomplete.currentToken(text, cursor)
+    }
+
+    private fun setupDefaultStateAutocomplete() {
+        val adapter = CommaSeparatedSuggestionAdapter(
+            requireContext(),
+            R.layout.dropdown_item,
+        )
+        val stateKeywords = (AppPreferences.todoKeywordsSet(requireContext()) +
+            AppPreferences.doneKeywordsSet(requireContext()))
+            .distinct()
+            .sorted()
+
+        adapter.updateDictionary(stateKeywords)
+        binding.defaultStateInput.setAdapter(adapter)
+        binding.defaultStateInput.threshold = 1
+
+        binding.defaultStateInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && binding.defaultStateInput.text.isNullOrBlank()) {
+                binding.defaultStateInput.showDropDown()
+            }
+        }
+
+        binding.defaultStateInput.setOnClickListener {
+            if (binding.defaultStateInput.text.isNullOrBlank()) {
+                binding.defaultStateInput.showDropDown()
+            }
+        }
     }
 
     private fun loadTemplate() {
