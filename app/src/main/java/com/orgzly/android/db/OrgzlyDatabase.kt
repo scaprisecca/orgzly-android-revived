@@ -80,7 +80,7 @@ import java.util.Calendar
             AppLog::class
         ],
 
-        version = 160
+        version = 161
 )
 @TypeConverters(com.orgzly.android.db.TypeConverters::class)
 abstract class OrgzlyDatabase : RoomDatabase() {
@@ -161,7 +161,8 @@ abstract class OrgzlyDatabase : RoomDatabase() {
                             MIGRATION_156_157,
                             MIGRATION_157_158,
                             MIGRATION_158_159,
-                            MIGRATION_159_160
+                            MIGRATION_159_160,
+                            MIGRATION_160_161
                     )
                     .addCallback(databaseCallback(context, insertDefaultSearches = true))
                     .build()
@@ -697,6 +698,12 @@ abstract class OrgzlyDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE searches ADD COLUMN presetKey TEXT")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_searches_presetKey` ON `searches` (`presetKey`)")
                 AgendaPresetSeeder.seedMissingPresets(db)
+            }
+        }
+
+        private val MIGRATION_160_161 = object : Migration(160, 161) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE capture_templates ADD COLUMN target_heading_path TEXT")
             }
         }
     }

@@ -35,6 +35,9 @@ data class CaptureTemplateEntity(
         @ColumnInfo(name = "target_notebook_name")
         val targetNotebookName: String? = null,
 
+        @ColumnInfo(name = "target_heading_path")
+        val targetHeadingPath: String? = null,
+
         @ColumnInfo(name = "title_template")
         val titleTemplate: String? = null,
 

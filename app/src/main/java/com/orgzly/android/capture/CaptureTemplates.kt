@@ -5,6 +5,8 @@ import com.orgzly.R
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.CaptureTemplateEntity
+import com.orgzly.android.ui.NotePlace
+import com.orgzly.android.ui.Place
 import com.orgzly.android.ui.note.NoteBuilder
 import com.orgzly.android.ui.note.NotePayload
 import com.orgzly.org.OrgProperties
@@ -73,6 +75,12 @@ data class CaptureInput @JvmOverloads constructor(
     val content: String? = null,
 )
 
+data class CaptureTargetResolution(
+    val place: NotePlace,
+    val resolvedBook: BookView,
+    val missingHeadingPath: String? = null,
+)
+
 object CaptureTemplates {
     @JvmStatic
     fun enabledTemplates(dataRepository: DataRepository): List<CaptureTemplateEntity> {
@@ -91,6 +99,16 @@ object CaptureTemplates {
         }
 
         return dataRepository.getCaptureTemplate(id)?.takeUnless { it.deleted }
+    }
+
+    @JvmStatic
+    fun normalizeHeadingPath(raw: String?): String? {
+        return raw
+            ?.split("/")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.joinToString("/")
+            ?.takeIf { it.isNotEmpty() }
     }
 
     @JvmStatic
@@ -126,6 +144,40 @@ object CaptureTemplates {
         }
 
         return dataRepository.getTargetBook(context)
+    }
+
+    @JvmStatic
+    @Throws(IOException::class)
+    fun resolveTarget(
+        dataRepository: DataRepository,
+        context: Context,
+        template: CaptureTemplateEntity?,
+        explicitBookId: Long?,
+    ): CaptureTargetResolution {
+        val targetBook = resolveTargetBook(dataRepository, context, template, explicitBookId)
+        val headingPath = normalizeHeadingPath(template?.targetHeadingPath)
+
+        if (headingPath == null) {
+            return CaptureTargetResolution(
+                place = NotePlace(targetBook.book.id),
+                resolvedBook = targetBook,
+            )
+        }
+
+        val targetHeading = dataRepository.getNoteAtPath("${targetBook.book.name}/$headingPath")
+
+        return if (targetHeading != null) {
+            CaptureTargetResolution(
+                place = NotePlace(targetBook.book.id, targetHeading.note.id, Place.UNDER),
+                resolvedBook = targetBook,
+            )
+        } else {
+            CaptureTargetResolution(
+                place = NotePlace(targetBook.book.id),
+                resolvedBook = targetBook,
+                missingHeadingPath = headingPath,
+            )
+        }
     }
 
     private fun buildTemplatePayload(

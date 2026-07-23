@@ -386,7 +386,7 @@ class BookFragment :
     }
 
     private fun openTemplatedNote(template: CaptureTemplateEntity) {
-        val targetBook = CaptureTemplates.resolveTargetBook(
+        val target = CaptureTemplates.resolveTarget(
             dataRepository,
             requireContext(),
             template,
@@ -394,7 +394,13 @@ class BookFragment :
         )
         val payload = CaptureTemplates.buildPayload(requireContext(), template, CaptureInput())
 
-        listener?.onTemplatedNoteNewRequest(NotePlace(targetBook.book.id), payload)
+        target.missingHeadingPath?.let {
+            activity?.showSnackbar(
+                getString(R.string.capture_template_target_heading_missing_summary, it),
+            )
+        }
+
+        listener?.onTemplatedNoteNewRequest(target.place, payload)
     }
 
     override fun onResume() {

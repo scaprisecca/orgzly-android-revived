@@ -22,6 +22,7 @@ import com.orgzly.android.App;
 import com.orgzly.android.AppIntent;
 import com.orgzly.android.SharingShortcutsManager;
 import com.orgzly.android.capture.CaptureInput;
+import com.orgzly.android.capture.CaptureTargetResolution;
 import com.orgzly.android.capture.CaptureTemplates;
 import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.db.entity.Book;
@@ -575,18 +576,24 @@ public class ShareActivity extends CommonActivity
 
     private void showNoteEditor(Data data, CaptureTemplateEntity template) {
         try {
-            long bookId = CaptureTemplates.resolveTargetBook(
+            CaptureTargetResolution target = CaptureTemplates.resolveTarget(
                     dataRepository,
                     this,
                     template,
-                    data.bookId).getBook().getId();
+                    data.bookId);
 
             NotePayload payload = CaptureTemplates.buildPayload(
                     this,
                     template,
                     new CaptureInput(data.title, data.content));
 
-            NoteFragment noteFragment = NoteFragment.forNewNote(new NotePlace(bookId), payload);
+            if (target.getMissingHeadingPath() != null) {
+                AppSnackbarUtils.showSnackbar(
+                        this,
+                        getString(R.string.capture_template_target_heading_missing_summary, target.getMissingHeadingPath()));
+            }
+
+            NoteFragment noteFragment = NoteFragment.forNewNote(target.getPlace(), payload);
 
             if (noteFragment != null) {
                 getSupportFragmentManager()

@@ -814,6 +814,10 @@
     <string name="capture_template_target_notebook_summary">Leave empty to fall back to the default notebook</string>
     <string name="capture_template_target_notebook_missing_summary">Missing notebook: %1$s. Using Default notebook.</string>
     <string name="capture_template_target_notebook_invalid">Choose an existing notebook or Default notebook</string>
+    <string name="capture_template_target_heading">Target heading</string>
+    <string name="capture_template_target_heading_summary">Optional. New notes are created under this heading in the target notebook.</string>
+    <string name="capture_template_target_heading_invalid">Choose an existing heading or leave empty</string>
+    <string name="capture_template_target_heading_missing_summary">Missing heading: %1$s. Captures will use the notebook root.</string>
     <string name="manage_capture_templates">Manage capture templates</string>
     <string name="manage_capture_templates_summary">Create, edit, duplicate, and delete capture templates</string>
     <string name="capture_template_new">New capture template</string>

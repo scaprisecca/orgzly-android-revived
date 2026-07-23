@@ -4,12 +4,14 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.orgzly.R
 import com.orgzly.android.LocalStorage
+import com.orgzly.android.TestUtils
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.DbRepoBookRepository
 import com.orgzly.android.db.OrgzlyDatabase
 import com.orgzly.android.db.entity.CaptureTemplateEntity
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.repos.RepoFactory
+import com.orgzly.android.ui.Place
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.CoreMatchers.nullValue
@@ -30,6 +32,7 @@ class CaptureTemplatesTest {
     private lateinit var context: Context
     private lateinit var database: OrgzlyDatabase
     private lateinit var dataRepository: DataRepository
+    private lateinit var testUtils: TestUtils
 
     @Before
     fun setUp() {
@@ -44,6 +47,7 @@ class CaptureTemplatesTest {
         dataRepository = DataRepository(
             context, database, repoFactory, context.resources, localStorage,
         )
+        testUtils = TestUtils(dataRepository, dbRepoBookRepository)
     }
 
     @After
@@ -152,6 +156,133 @@ class CaptureTemplatesTest {
         )
 
         assertThat(resolved.book.id, `is`(learningBook.book.id))
+    }
+
+    @Test
+    fun targetHeadingPathBlankUsesNotebookRoot() {
+        val errandsBook = dataRepository.createBook("Errands")
+        dataRepository.updateCaptureTemplate(
+            template(CaptureTemplate.INBOX_TASK.id).copy(
+                targetNotebookName = "Errands",
+                targetHeadingPath = "   ",
+            ),
+        )
+
+        val resolution = CaptureTemplates.resolveTarget(
+            dataRepository,
+            context,
+            template(CaptureTemplate.INBOX_TASK.id),
+            null,
+        )
+
+        assertThat(resolution.place.bookId, `is`(errandsBook.book.id))
+        assertThat(resolution.place.noteId, `is`(0L))
+        assertThat(resolution.place.place, `is`(Place.UNSPECIFIED))
+        assertThat(resolution.missingHeadingPath, `is`(nullValue()))
+    }
+
+    @Test
+    fun targetHeadingPathRoutesUnderMatchingTopLevelHeading() {
+        val errandsBook = testUtils.setupBook("Errands", "* Home Depot\n")
+        val homeDepot = requireNotNull(dataRepository.getNoteAtPath("Errands/Home Depot"))
+        dataRepository.updateCaptureTemplate(
+            template(CaptureTemplate.INBOX_TASK.id).copy(
+                targetNotebookName = "Errands",
+                targetHeadingPath = "Home Depot",
+            ),
+        )
+
+        val resolution = CaptureTemplates.resolveTarget(
+            dataRepository,
+            context,
+            template(CaptureTemplate.INBOX_TASK.id),
+            null,
+        )
+
+        assertThat(resolution.place.bookId, `is`(errandsBook.book.id))
+        assertThat(resolution.place.noteId, `is`(homeDepot.note.id))
+        assertThat(resolution.place.place, `is`(Place.UNDER))
+        assertThat(resolution.missingHeadingPath, `is`(nullValue()))
+    }
+
+    @Test
+    fun nestedTargetHeadingPathRoutesUnderMatchingDescendant() {
+        val errandsBook = testUtils.setupBook("Errands", "* Shopping\n** Home Depot\n")
+        val homeDepot = requireNotNull(dataRepository.getNoteAtPath("Errands/Shopping/Home Depot"))
+        dataRepository.updateCaptureTemplate(
+            template(CaptureTemplate.INBOX_TASK.id).copy(
+                targetNotebookName = "Errands",
+                targetHeadingPath = "Shopping/Home Depot",
+            ),
+        )
+
+        val resolution = CaptureTemplates.resolveTarget(
+            dataRepository,
+            context,
+            template(CaptureTemplate.INBOX_TASK.id),
+            null,
+        )
+
+        assertThat(resolution.place.bookId, `is`(errandsBook.book.id))
+        assertThat(resolution.place.noteId, `is`(homeDepot.note.id))
+        assertThat(resolution.place.place, `is`(Place.UNDER))
+        assertThat(resolution.missingHeadingPath, `is`(nullValue()))
+    }
+
+    @Test
+    fun missingTargetHeadingFallsBackToNotebookRootAndReportsMissingPath() {
+        val errandsBook = dataRepository.createBook("Errands")
+        dataRepository.updateCaptureTemplate(
+            template(CaptureTemplate.INBOX_TASK.id).copy(
+                targetNotebookName = "Errands",
+                targetHeadingPath = "Missing Heading",
+            ),
+        )
+
+        val resolution = CaptureTemplates.resolveTarget(
+            dataRepository,
+            context,
+            template(CaptureTemplate.INBOX_TASK.id),
+            null,
+        )
+
+        assertThat(resolution.place.bookId, `is`(errandsBook.book.id))
+        assertThat(resolution.place.noteId, `is`(0L))
+        assertThat(resolution.place.place, `is`(Place.UNSPECIFIED))
+        assertThat(resolution.missingHeadingPath, `is`("Missing Heading"))
+    }
+
+    @Test
+    fun missingTargetNotebookFallsBackToDefaultNotebookBeforeResolvingHeading() {
+        val inboxBook = testUtils.setupBook("Inbox", "* Home Depot\n")
+        val homeDepot = requireNotNull(dataRepository.getNoteAtPath("Inbox/Home Depot"))
+        dataRepository.updateCaptureTemplate(
+            template(CaptureTemplate.INBOX_TASK.id).copy(
+                targetNotebookName = "Missing",
+                targetHeadingPath = "Home Depot",
+            ),
+        )
+
+        val resolution = CaptureTemplates.resolveTarget(
+            dataRepository,
+            context,
+            template(CaptureTemplate.INBOX_TASK.id),
+            null,
+        )
+
+        assertThat(resolution.place.bookId, `is`(inboxBook.book.id))
+        assertThat(resolution.place.noteId, `is`(homeDepot.note.id))
+        assertThat(resolution.place.place, `is`(Place.UNDER))
+        assertThat(resolution.missingHeadingPath, `is`(nullValue()))
+    }
+
+    @Test
+    fun headingPathNormalizationTrimsEmptySegments() {
+        assertThat(
+            CaptureTemplates.normalizeHeadingPath("  Shopping // Home Depot / "),
+            `is`("Shopping/Home Depot"),
+        )
+        assertThat(CaptureTemplates.normalizeHeadingPath(" / / "), `is`(nullValue()))
     }
 
     @Test
