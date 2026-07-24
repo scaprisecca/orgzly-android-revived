@@ -14,6 +14,7 @@ import com.orgzly.android.db.entity.NoteView
 import com.orgzly.android.db.entity.toList
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.ui.TimeType
+import com.orgzly.android.ui.util.StateColorResolver
 import com.orgzly.android.ui.util.TitleGenerator
 import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.usecase.NoteToggleFolding
@@ -40,7 +41,8 @@ class NoteItemViewBinder(private val context: Context, private val inBook: Boole
                 attrs.todoColor,
                 attrs.doneColor,
                 attrs.postTitleTextSize,
-                attrs.postTitleTextColor)
+                attrs.postTitleTextColor,
+                StateColorResolver(context, attrs.todoColor, attrs.doneColor))
 
         titleGenerator = TitleGenerator(context, inBook, titleAttributes)
 

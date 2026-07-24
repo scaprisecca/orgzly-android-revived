@@ -27,6 +27,7 @@ import com.orgzly.android.ui.dialogs.ShowSshKeyDialogFragment
 import com.orgzly.android.ui.notifications.Notifications
 import com.orgzly.android.ui.capture.TemplateListFragment
 import com.orgzly.android.ui.util.KeyboardUtils
+import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.usecase.NoteReparseStateAndTitles
 import com.orgzly.android.usecase.NoteSyncCreatedAtTimeWithProperty
 import com.orgzly.android.usecase.UseCase
@@ -163,6 +164,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         updateWidgetScreen()
         setupCalendarSyncSearchPreference()
         setupDoneArchiveBookPreference()
+        populateStateColorPreferencesIfNeeded()
     }
 
     private fun setupCalendarSyncSearchPreference() {
@@ -318,6 +320,13 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
         val activity = activity as? CommonActivity ?: return
 
+        if (StateColorPreferences.isStateColorPreferenceKey(key)) {
+            val intent = Intent(context, ListWidgetProvider::class.java).apply {
+                action = AppIntent.ACTION_UPDATE_LAYOUT_LIST_WIDGET
+            }
+            context?.sendBroadcast(intent)
+        }
+
         when (key) {
             getString(R.string.pref_key_note_popup_buttons_in_book_left),
             getString(R.string.pref_key_note_popup_buttons_in_book_right),
@@ -337,6 +346,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 listener?.onNotesUpdateRequest(NoteReparseStateAndTitles())
 
                 setDefaultStateForNewNote()
+                populateStateColorPreferencesIfNeeded()
             }
 
             // Created-at property
@@ -621,6 +631,34 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         return findPreference(getString(resId))
     }
 
+    private fun populateStateColorPreferencesIfNeeded() {
+        if (arguments?.getString(ARG_RESOURCE) != getString(R.string.pref_key_todo_state_colors)) {
+            return
+        }
+
+        val screen = preferenceScreen ?: return
+        val context = requireContext()
+        val (todoColor, doneColor) = context.styledAttributes(
+            intArrayOf(R.attr.item_head_state_todo_color, R.attr.item_head_state_done_color),
+        ) { typedArray ->
+            typedArray.getColor(0, 0) to typedArray.getColor(1, 0)
+        }
+
+        screen.removeAll()
+
+        NoteStates.fromPreferences(context).array.forEachIndexed { index, state ->
+            val fallbackColor = if (AppPreferences.isDoneKeyword(context, state)) doneColor else todoColor
+            screen.addPreference(
+                ColorPickerPreference(context, null).apply {
+                    key = StateColorPreferences.stateColorPreferenceKey(state)
+                    title = state
+                    order = index
+                    setDefaultColorHexForDynamicPreference(StateColorPreferences.defaultColorHex(fallbackColor))
+                }
+            )
+        }
+    }
+
     interface Listener {
         fun onNotesUpdateRequest(action: UseCase)
         fun onDatabaseClearRequest()
@@ -652,7 +690,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 "prefs_screen_org_mode_tags_indent" to R.xml.prefs_screen_org_mode_tags_indent, // Sub-screen
                 "prefs_screen_widget" to R.xml.prefs_screen_widget, // Sub-screen
                 "prefs_screen_developer" to R.xml.prefs_screen_developer, // Sub-screen
-                "prefs_screen_app" to R.xml.prefs_screen_app
+                "prefs_screen_app" to R.xml.prefs_screen_app,
+                "prefs_screen_state_colors" to R.xml.prefs_screen_state_colors
         )
 
         fun getInstance(res: String? = null): SettingsFragment {

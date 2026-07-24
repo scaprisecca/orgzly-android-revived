@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.prefs.AppPreferences
+import com.orgzly.android.ui.util.StateColorResolver
 import com.orgzly.android.ui.util.TitleGenerator
 import com.orgzly.android.util.LogUtils
 
@@ -200,11 +201,15 @@ object WidgetStyle {
 
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "$scheme/$dayNight: $stateColorsKey")
 
+        val todoColor = getColor(context, stateColorsKey, "todo")
+        val doneColor = getColor(context, stateColorsKey, "done")
+
         return TitleGenerator.TitleAttributes(
-            getColor(context, stateColorsKey, "todo"),
-            getColor(context, stateColorsKey, "done"),
+            todoColor,
+            doneColor,
             postTitleTextSize(context).toInt(),
-            getColor(context, stateColorsKey, "post title"))
+            getColor(context, stateColorsKey, "post title"),
+            StateColorResolver(context, todoColor, doneColor))
     }
 
     private fun titleTextSize(context: Context): Float {

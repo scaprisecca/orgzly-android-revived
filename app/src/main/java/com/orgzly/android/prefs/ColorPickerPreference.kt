@@ -5,10 +5,9 @@ import android.content.res.TypedArray
 import android.graphics.Color
 import android.util.AttributeSet
 import androidx.preference.DialogPreference
+import androidx.preference.PreferenceViewHolder
 import com.orgzly.R
 import java.util.Locale
-
-import androidx.preference.PreferenceViewHolder
 
 class ColorPickerPreference(context: Context, attrs: AttributeSet?) : DialogPreference(context, attrs) {
 
@@ -17,17 +16,16 @@ class ColorPickerPreference(context: Context, attrs: AttributeSet?) : DialogPref
         widgetLayoutResource = R.layout.preference_color_swatch
     }
 
-
     private var color: Int = Color.RED
     private var colorHex: String = "#FF0000"
+    private var defaultColorHex: String = colorHex
 
     init {
         val a = context.obtainStyledAttributes(attrs, R.styleable.ColorPickerPreference)
         try {
             val defaultValue = a.getString(R.styleable.ColorPickerPreference_android_defaultValue)
             if (defaultValue != null) {
-                colorHex = defaultValue
-                color = parseColor(colorHex)
+                setDefaultColorHex(defaultValue)
             }
         } finally {
             a.recycle()
@@ -37,7 +35,7 @@ class ColorPickerPreference(context: Context, attrs: AttributeSet?) : DialogPref
     }
 
     override fun onSetInitialValue(defaultValue: Any?) {
-        val initialValue = getPersistedString(defaultValue as? String ?: colorHex)
+        val initialValue = getPersistedString(defaultValue as? String ?: defaultColorHex)
         colorHex = initialValue
         color = parseColor(colorHex)
         updateSummary()
@@ -59,12 +57,16 @@ class ColorPickerPreference(context: Context, attrs: AttributeSet?) : DialogPref
 
     fun getColor(): Int = color
 
+    fun setDefaultColorHexForDynamicPreference(hex: String) {
+        setDefaultColorHex(hex)
+        colorHex = defaultColorHex
+        color = parseColor(colorHex)
+        updateSummary()
+        notifyChanged()
+    }
+
     private fun parseColor(hex: String): Int {
-        return try {
-            Color.parseColor(hex)
-        } catch (e: IllegalArgumentException) {
-            Color.RED
-        }
+        return StateColorPreferences.parseColorHex(hex) ?: Color.RED
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
@@ -75,6 +77,14 @@ class ColorPickerPreference(context: Context, attrs: AttributeSet?) : DialogPref
 
     private fun updateSummary() {
         summary = colorHex
+    }
+
+    private fun setDefaultColorHex(hex: String) {
+        defaultColorHex = StateColorPreferences.defaultColorHex(
+            StateColorPreferences.parseColorHex(hex) ?: Color.RED
+        )
+        colorHex = defaultColorHex
+        color = parseColor(defaultColorHex)
     }
 
 }

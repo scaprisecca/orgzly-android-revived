@@ -328,6 +328,8 @@
     <string name="reversed_note_click_action">Swap note click and long-click actions</string>
     <string name="reversed_note_click_action_summary">Click to select note, long-click to open</string>
     <string name="look_and_feel">Look &amp; Feel</string>
+    <string name="pref_title_todo_state_colors">TODO state colors</string>
+    <string name="pref_summary_todo_state_colors">Choose colors for individual TODO and DONE workflow states</string>
     <string name="notes_list">List of notes</string>
     <string name="prefs_title_new_note">New note</string>
     <string name="prefs_title_notifications">Notifications</string>

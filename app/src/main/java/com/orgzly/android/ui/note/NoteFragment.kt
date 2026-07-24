@@ -1,6 +1,7 @@
 package com.orgzly.android.ui.note
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Build
@@ -56,11 +57,13 @@ import com.orgzly.android.ui.share.ShareActivity
 import com.orgzly.android.ui.showSnackbar
 import com.orgzly.android.ui.util.ActivityUtils
 import com.orgzly.android.ui.util.KeyboardUtils
+import com.orgzly.android.ui.util.StateColorResolver
 import com.orgzly.android.ui.util.getAlarmManager
 import com.orgzly.android.ui.util.goneIf
 import com.orgzly.android.ui.util.goneUnless
 import com.orgzly.android.ui.util.invisibleIf
 import com.orgzly.android.ui.util.invisibleUnless
+import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.ui.views.richtext.RichText
 import com.orgzly.android.usecase.NoteRefile
 import com.orgzly.android.util.LogUtils
@@ -94,6 +97,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     private var dialog: AlertDialog? = null
     private var pendingTimestampInsertionMode: TimestampInsertionMode? = null
     private var activePropertyValue: EditText? = null
+    private var defaultStateButtonTextColors: ColorStateList? = null
 
     private lateinit var sharedMainActivityViewModel: SharedMainActivityViewModel
 
@@ -218,6 +222,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
 
         binding.stateButton.setOnClickListener(this)
         binding.stateRemove.setOnClickListener(this)
+        defaultStateButtonTextColors = binding.stateButton.textColors
 
         binding.scheduledButton.setOnClickListener(this)
         binding.scheduledRemove.setOnClickListener(this)
@@ -962,6 +967,7 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
         binding.viewFlipper.displayedChild = 0
+        defaultStateButtonTextColors = null
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -1457,13 +1463,31 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
     }
 
     private fun setStateView(state: String?) {
-        binding.stateButton.text =
+        val visibleState =
             if (state == null || NoteStates.NO_STATE_KEYWORD == state) {
                 null
             } else {
                 state
             }
+
+        binding.stateButton.text = visibleState
+        if (visibleState == null) {
+            binding.stateButton.setTextColor(defaultStateButtonTextColors ?: binding.stateButton.textColors)
+        } else {
+            binding.stateButton.setTextColor(noteStateColorResolver().colorForState(visibleState))
+        }
         binding.stateRemove.invisibleUnless(!binding.stateButton.text.isNullOrEmpty())
+    }
+
+    private fun noteStateColorResolver(): StateColorResolver {
+        val (todoColor, doneColor) = requireContext().styledAttributes(
+            intArrayOf(R.attr.item_head_state_todo_color, R.attr.item_head_state_done_color),
+        ) { typedArray ->
+            typedArray.getColor(0, binding.stateButton.currentTextColor) to
+                typedArray.getColor(1, binding.stateButton.currentTextColor)
+        }
+
+        return StateColorResolver(requireContext(), todoColor, doneColor)
     }
 
     private fun setPriorityView(priority: String?) {

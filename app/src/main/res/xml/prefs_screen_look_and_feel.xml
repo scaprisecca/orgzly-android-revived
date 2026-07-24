@@ -36,6 +36,11 @@
             android:summary="@string/pref_summary_calendar_color"
             android:defaultValue="@string/pref_default_calendar_color"/>
 
+        <PreferenceScreen
+            android:key="@string/pref_key_todo_state_colors"
+            android:title="@string/pref_title_todo_state_colors"
+            android:summary="@string/pref_summary_todo_state_colors" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/other">

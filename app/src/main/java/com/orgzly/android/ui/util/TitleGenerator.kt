@@ -9,6 +9,7 @@ import android.text.TextUtils
 import android.text.style.AbsoluteSizeSpan
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
+import androidx.annotation.ColorInt
 import com.orgzly.android.db.entity.Note
 import com.orgzly.android.db.entity.NoteView
 import com.orgzly.android.db.entity.isNotEmpty
@@ -126,15 +127,9 @@ class TitleGenerator(
     }
 
     private fun generateState(note: Note): CharSequence {
-        val str = SpannableString(note.state)
-
-        val color = if (AppPreferences.doneKeywordsSet(context).contains(note.state)) {
-            attributes.colorDone
-        } else {
-            attributes.colorTodo
-        }
-
-        str.setSpan(color, 0, str.length, 0)
+        val state = note.state ?: return ""
+        val str = SpannableString(state)
+        str.setSpan(attributes.colorForState(state), 0, str.length, 0)
 
         return str
     }
@@ -144,15 +139,18 @@ class TitleGenerator(
     }
 
     class TitleAttributes(
-        colorTodo: Int,
-        colorDone: Int,
+        @ColorInt private val colorTodo: Int,
+        @ColorInt private val colorDone: Int,
         postTitleTextSize: Int,
-        postTitleTextColor: Int
+        postTitleTextColor: Int,
+        private val stateColorResolver: StateColorResolver,
     ) {
-        val colorTodo: ForegroundColorSpan = ForegroundColorSpan(colorTodo)
-        val colorDone: ForegroundColorSpan = ForegroundColorSpan(colorDone)
         val postTitleTextSize: AbsoluteSizeSpan = AbsoluteSizeSpan(postTitleTextSize)
         val postTitleTextColor: ForegroundColorSpan = ForegroundColorSpan(postTitleTextColor)
+
+        fun colorForState(state: String): ForegroundColorSpan {
+            return ForegroundColorSpan(stateColorResolver.colorForState(state))
+        }
     }
 
     companion object {
