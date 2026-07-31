@@ -27,6 +27,7 @@ import com.orgzly.android.ui.notes.query.search.SearchFragment;
 import com.orgzly.android.ui.savedsearch.SavedSearchFragment;
 import com.orgzly.android.ui.savedsearch.AgendaSavedSearchBuilderFragment;
 import com.orgzly.android.ui.savedsearches.SavedSearchesFragment;
+import com.orgzly.android.ui.tags.TagsFragment;
 import com.orgzly.android.util.LogUtils;
 
 /**
@@ -123,6 +124,21 @@ public class DisplayManager {
                 R.id.single_pane_container,
                 fragment,
                 SavedSearchesFragment.getFRAGMENT_TAG(),
+                true);
+    }
+
+    public static void displayTags(FragmentManager fragmentManager) {
+        if (isFragmentDisplayed(fragmentManager, TagsFragment.FRAGMENT_TAG) != null) {
+            return;
+        }
+
+        Fragment fragment = TagsFragment.getInstance();
+
+        replaceFragment(
+                fragmentManager,
+                R.id.single_pane_container,
+                fragment,
+                TagsFragment.FRAGMENT_TAG,
                 true);
     }
 

@@ -17,6 +17,7 @@ import com.orgzly.android.ui.main.MainActivityViewModel
 import com.orgzly.android.ui.notes.book.BookFragment
 import com.orgzly.android.ui.notes.query.QueryFragment
 import com.orgzly.android.ui.savedsearches.SavedSearchesFragment
+import com.orgzly.android.ui.tags.TagsFragment
 import com.orgzly.android.util.LogUtils
 import java.util.*
 
@@ -36,10 +37,12 @@ internal class DrawerNavigationView(
         // Add mapping for groups
         menuItemIdMap[BooksFragment.drawerItemId] = R.id.books
         menuItemIdMap[SavedSearchesFragment.getDrawerItemId()] = R.id.searches
+        menuItemIdMap[TagsFragment.drawerItemId] = R.id.tags
 
         // Setup intents
         menu.findItem(R.id.searches).intent = Intent(AppIntent.ACTION_OPEN_SAVED_SEARCHES)
         menu.findItem(R.id.books).intent = Intent(AppIntent.ACTION_OPEN_BOOKS)
+        menu.findItem(R.id.tags).intent = Intent(AppIntent.ACTION_OPEN_TAGS)
         menu.findItem(R.id.settings).intent = Intent(AppIntent.ACTION_OPEN_SETTINGS)
 
         viewModel.books().observe(activity, Observer {

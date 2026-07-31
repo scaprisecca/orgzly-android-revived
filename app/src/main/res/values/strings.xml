@@ -251,9 +251,15 @@
     <string name="create_new_repository_for_syncing">Create new repository for syncing your notebooks</string>
 
     <string name="no_filters">You have no saved searches</string>
+    <string name="tag_browser_empty_state">No active task tags found</string>
 
     <string name="book_shortcut_label">Notebook</string>
     <string name="new_note_shortcut_label">New note</string>
+
+    <plurals name="tag_browser_active_task_count">
+        <item quantity="one">%d task</item>
+        <item quantity="other">%d tasks</item>
+    </plurals>
 
     <string name="down">Down</string>
     <string name="up">Up</string>

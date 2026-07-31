@@ -43,6 +43,8 @@ import com.orgzly.android.ui.NotePlace
 import com.orgzly.android.ui.Place
 import com.orgzly.android.ui.note.NoteBuilder
 import com.orgzly.android.ui.note.NotePayload
+import com.orgzly.android.ui.tags.TagBrowserRow
+import com.orgzly.android.ui.tags.TagBrowserRows
 import com.orgzly.android.usecase.RepoCreate
 import com.orgzly.android.util.*
 import com.orgzly.org.OrgActiveTimestamps
@@ -2378,6 +2380,20 @@ class DataRepository @Inject constructor(
         return db.note().getDistinctTags()
                 .flatMap { Tags.fromString(it).tags }
                 .distinct()
+    }
+
+    fun getTagBrowserRowsLiveData(): LiveData<List<TagBrowserRow>> {
+        return db.noteView().getAllLiveData().map { noteViews ->
+            val todoKeywords = AppPreferences.todoKeywordsSet(context)
+
+            TagBrowserRows.fromNotes(noteViews.map { noteView ->
+                TagBrowserRows.NoteInput(
+                        directTags = noteView.note.tags.toList(),
+                        inheritedTags = noteView.getInheritedTagsList(),
+                        isActiveTodo = noteView.note.state in todoKeywords
+                )
+            })
+        }
     }
 
     /**

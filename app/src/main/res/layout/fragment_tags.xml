@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/CoordinatorLayoutFitsSystemWindows">
+
+    <ViewFlipper
+        android:id="@+id/fragment_tags_view_flipper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ProgressBar style="@style/LoadingProgressBar" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/fragment_tags_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="?attr/actionBarSize"
+            android:clipToPadding="false" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <TextView
+                style="@style/BigCenteredText"
+                android:text="@string/tag_browser_empty_state" />
+        </ScrollView>
+
+    </ViewFlipper>
+
+    <com.google.android.material.appbar.AppBarLayout
+        style="@style/AppBarLayoutStyle">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/top_toolbar"
+            style="@style/TopToolbar"
+            app:menu="@menu/tags_actions"
+            app:navigationIcon="@drawable/ic_menu" />
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/sync_toolbar_progress"
+            style="@style/SyncProgressIndicator" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Added a Tags browser in the navigation drawer for active tasks grouped by effective tag counts, including inherited parent tags and filetags.
 - Added configurable colors for individual TODO and DONE workflow states in note lists, widgets, and the note editor state button.
 - Added optional target headings for capture templates so new notes can be created under a specific heading inside the target notebook.
 - Added autocomplete suggestions for TODO and DONE states in capture-template default state fields.

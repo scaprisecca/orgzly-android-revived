@@ -20,6 +20,13 @@
             android:id="@+id/settings"
             android:icon="@drawable/ic_settings"
             android:title="@string/settings"
+            android:orderInCategory="5"/>
+
+        <item
+            android:id="@+id/tags"
+            android:icon="@drawable/ic_label_outline"
+            android:title="@string/tags"
+            android:checkable="true"
             android:orderInCategory="4"/>
 
         <!-- FIXME: Space for sync button and progress bar -->

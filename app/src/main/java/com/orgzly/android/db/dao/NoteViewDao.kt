@@ -15,6 +15,9 @@ abstract class NoteViewDao {
     @Query("$QUERY WHERE notes.level > 0 GROUP BY notes.id")
     abstract fun getAll(): List<NoteView>
 
+    @Query("$QUERY WHERE notes.level > 0 AND notes.is_cut = 0 GROUP BY notes.id")
+    abstract fun getAllLiveData(): LiveData<List<NoteView>>
+
     @Query("""
         $QUERY
         WHERE notes.book_id = :bookId

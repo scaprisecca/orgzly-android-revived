@@ -41,6 +41,7 @@ import com.orgzly.android.ui.settings.exporting.SettingsExportFragment
 import com.orgzly.android.ui.settings.importing.SettingsImportFragment
 import com.orgzly.android.ui.share.ShareActivity
 import com.orgzly.android.ui.sync.SyncFragment
+import com.orgzly.android.ui.tags.TagsFragment
 import com.orgzly.android.usecase.UseCaseRunner
 import com.orgzly.android.usecase.UseCaseWorker
 import com.orgzly.android.widgets.ListWidgetProvider
@@ -80,6 +81,7 @@ interface AppComponent {
     fun inject(arg: AgendaFragment)
     fun inject(arg: NoteFragment)
     fun inject(arg: SavedSearchesFragment)
+    fun inject(arg: TagsFragment)
     fun inject(arg: SavedSearchFragment)
     fun inject(arg: AgendaSavedSearchBuilderFragment)
     fun inject(arg: RefileFragment)

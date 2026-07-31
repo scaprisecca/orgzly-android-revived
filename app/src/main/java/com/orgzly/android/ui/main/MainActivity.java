@@ -54,6 +54,7 @@ import com.orgzly.android.ui.savedsearch.AgendaSavedSearchBuilderFragment;
 import com.orgzly.android.ui.savedsearches.SavedSearchesFragment;
 import com.orgzly.android.ui.settings.SettingsActivity;
 import com.orgzly.android.ui.sync.SyncFragment;
+import com.orgzly.android.ui.tags.TagsFragment;
 import com.orgzly.android.ui.util.KeyboardUtils;
 import com.orgzly.android.usecase.BookExport;
 import com.orgzly.android.usecase.BookImportGettingStarted;
@@ -94,6 +95,7 @@ public class MainActivity extends CommonActivity
         SavedSearchFragment.Listener,
         AgendaSavedSearchBuilderFragment.Listener,
         SavedSearchesFragment.Listener,
+        TagsFragment.Listener,
         BooksFragment.Listener,
         BookFragment.Listener,
         NoteFragment.Listener,
@@ -634,6 +636,7 @@ public class MainActivity extends CommonActivity
         bm.registerReceiver(receiver, new IntentFilter(AppIntent.ACTION_FOLLOW_LINK_TO_NOTE_OR_BOOK_WITH_PROPERTY));
         bm.registerReceiver(receiver, new IntentFilter(AppIntent.ACTION_FOLLOW_LINK_TO_FILE));
         bm.registerReceiver(receiver, new IntentFilter(AppIntent.ACTION_OPEN_SAVED_SEARCHES));
+        bm.registerReceiver(receiver, new IntentFilter(AppIntent.ACTION_OPEN_TAGS));
         bm.registerReceiver(receiver, new IntentFilter(AppIntent.ACTION_OPEN_QUERY));
         bm.registerReceiver(receiver, new IntentFilter(AppIntent.ACTION_OPEN_BOOKS));
         bm.registerReceiver(receiver, new IntentFilter(AppIntent.ACTION_OPEN_BOOK));
@@ -989,6 +992,11 @@ public class MainActivity extends CommonActivity
         viewModel.clockingUpdateRequest(noteIds, 2);
     }
 
+    @Override
+    public void onTagSelected(String tag, String query) {
+        DisplayManager.displayQuery(getSupportFragmentManager(), query, tag);
+    }
+
     private class LocalBroadcastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1010,6 +1018,11 @@ public class MainActivity extends CommonActivity
 
                 case AppIntent.ACTION_OPEN_SAVED_SEARCHES: {
                     DisplayManager.displaySavedSearches(getSupportFragmentManager());
+                    break;
+                }
+
+                case AppIntent.ACTION_OPEN_TAGS: {
+                    DisplayManager.displayTags(getSupportFragmentManager());
                     break;
                 }
 
