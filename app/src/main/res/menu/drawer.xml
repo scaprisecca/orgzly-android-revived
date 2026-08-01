@@ -17,17 +17,17 @@
             android:orderInCategory="2"/>
 
         <item
-            android:id="@+id/settings"
-            android:icon="@drawable/ic_settings"
-            android:title="@string/settings"
-            android:orderInCategory="5"/>
-
-        <item
             android:id="@+id/tags"
             android:icon="@drawable/ic_label_outline"
             android:title="@string/tags"
             android:checkable="true"
             android:orderInCategory="4"/>
+
+        <item
+            android:id="@+id/settings"
+            android:icon="@drawable/ic_settings"
+            android:title="@string/settings"
+            android:orderInCategory="5"/>
 
         <!-- FIXME: Space for sync button and progress bar -->
         <item android:title="" android:enabled="false" android:orderInCategory="6" />

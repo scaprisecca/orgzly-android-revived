@@ -31,6 +31,7 @@ import com.orgzly.android.sync.SyncRunner
 import com.orgzly.android.ui.CommonActivity
 import com.orgzly.android.ui.NotePlace
 import com.orgzly.android.ui.Place
+import com.orgzly.android.ui.books.BooksFragment
 import com.orgzly.android.ui.dialogs.TimestampDialogFragment
 import com.orgzly.android.ui.drawer.DrawerItem
 import com.orgzly.android.ui.main.SharedMainActivityViewModel
@@ -560,7 +561,7 @@ class BookFragment :
     }
 
     override fun getCurrentDrawerItemId(): String {
-        return getDrawerItemId(mBookId)
+        return BooksFragment.drawerItemId
     }
 
     override fun onNoteClick(view: View, position: Int, noteView: NoteView) {
@@ -1215,9 +1216,5 @@ class BookFragment :
             return fragment
         }
 
-        @JvmStatic
-        fun getDrawerItemId(bookId: Long): String {
-            return "$TAG $bookId"
-        }
     }
 }

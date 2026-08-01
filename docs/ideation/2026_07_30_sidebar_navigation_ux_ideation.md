@@ -194,5 +194,8 @@ focus: redesign the left drawer/sidebar so searches, notebooks, tags, and settin
 
 ## suggested_ce_brainstorm_options
 - `tag_browser_v1`: promoted to requirements and implementation plan on 2026-07-31.
-- `tabbed_drawer_v1`: larger navigation redesign; useful after tag-browser semantics are validated in daily use.
+- `sidebar_tabs_v1_5`: promoted to requirements on 2026-07-31 after Scott confirmed Tags V1 works well.
+  - Scope: clean drawer launcher with only top-level Searches, Notebooks, Tags, and Settings.
+  - Dynamic saved searches and notebooks move out of the drawer and remain browsable from their full-screen tabs.
+  - Requirements: `docs/brainstorms/2026_07_31_sidebar_tabs_v1_5_requirements.md`.
 - `custom_view_grouping_v1`: saved-search result grouping by tag/notebook/priority; overlaps with errands workflow and should prefer tag grouping first.

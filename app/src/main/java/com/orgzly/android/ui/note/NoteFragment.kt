@@ -50,7 +50,7 @@ import com.orgzly.android.ui.dialogs.TimestampDialogFragment
 import com.orgzly.android.ui.drawer.DrawerItem
 import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.android.ui.main.SharedMainActivityViewModel
-import com.orgzly.android.ui.notes.book.BookFragment
+import com.orgzly.android.ui.books.BooksFragment
 import com.orgzly.android.ui.refile.RefileFragment
 import com.orgzly.android.ui.settings.SettingsActivity
 import com.orgzly.android.ui.share.ShareActivity
@@ -1495,11 +1495,9 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         binding.priorityRemove.invisibleUnless(!binding.priorityButton.text.isNullOrEmpty())
     }
 
-    /**
-     * Mark note's book in the drawer.
-     */
+    /** Keep note screens under the top-level Notebooks drawer selection. */
     override fun getCurrentDrawerItemId(): String {
-        return BookFragment.getDrawerItemId(viewModel.bookId)
+        return BooksFragment.drawerItemId
     }
 
     fun getNoteId(): Long {

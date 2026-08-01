@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added a configurable done-list destination and bulk actions to move completed tasks into it from the current notebook or a selected heading.
 
 ### Fixed
+- Cleaned up the navigation drawer so saved searches and notebooks live in their full-screen sections instead of appearing inline.
 - Clarified guided saved-search property filter help text so users know exact matches require both the property name and value, for example `client=acme` or `client: acme`.
 - Fixed a crash after using the mobile timestamp toolbar while editing property values.
 - Fixed the note editor so the mobile timestamp toolbar can be used while editing property values, allowing inline Org timestamps to be inserted directly into metadata fields.

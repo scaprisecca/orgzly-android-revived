@@ -12,6 +12,7 @@ import com.orgzly.android.ui.dialogs.TimestampDialogFragment
 import com.orgzly.android.ui.drawer.DrawerItem
 import com.orgzly.android.ui.main.SharedMainActivityViewModel
 import com.orgzly.android.ui.notes.NotesFragment
+import com.orgzly.android.ui.savedsearches.SavedSearchesFragment
 import com.orgzly.android.ui.settings.SettingsActivity
 
 /**
@@ -39,7 +40,7 @@ abstract class QueryFragment :
     }
 
     override fun getCurrentDrawerItemId(): String {
-        return getDrawerItemId(currentQuery)
+        return SavedSearchesFragment.getDrawerItemId()
     }
 
     override fun onAttach(context: Context) {
@@ -153,9 +154,5 @@ abstract class QueryFragment :
 
         const val ARG_QUERY = "query"
         const val ARG_QUERY_NAME = "query_name"
-
-        fun getDrawerItemId(query: String?): String {
-            return "$TAG $query"
-        }
     }
 }
